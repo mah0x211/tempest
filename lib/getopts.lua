@@ -286,7 +286,7 @@ local function getopts( ... )
     end
 
     -- check client
-    opts.client, err = touint( opts.client, opts.worker, opts.worker )
+    opts.client, err = touint( opts.client, 1, 1 )
     if err then
         printUsage( 'invalid client option: ' .. err )
     end
