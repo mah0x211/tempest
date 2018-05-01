@@ -139,15 +139,27 @@ Usage:
     tempest [options] address
 
 Options:
-    -?          : show help (this page)
-    -w          : number of workers (default `1`)
-    -c          : number of client per worker (default `1`)
-    -d          : duration (default `5s`, minimum `1s`)
-    -t          : send and recv timeout (default `5s`, minimum `1s`)
-    --rcvtimeo  : recv timeout  (default `-t value`, minimum `1s`)
-    --sndtimeo  : send timeout  (default `-t value`, minimum `1s`)
-    -s          : scenario script
-    address     : specify target address in the following format; `[host]:port`
+    -?                      : show help (this page)
+    -w, --worker=<N>        : number of workers (default `1`)
+    -c, --client=<N>        : number of client per worker (default `1`)
+    -d, --duration=<time>   : duration (default `5s`)
+    -t, --timeout=<time>    : send and recv timeout (default `5s`)
+    --rcvtimeo=<time>       : recv timeout  (default same as `-t` value)
+    --sndtimeo=<time>       : send timeout  (default same as `-t` value)
+    -s, --script=<pathname> : scenario script
+    address                 : specify target address in the following format;
+                              `[host]:port`
+
+NOTE:
+    please specify the value of <time> in millisecond(s).
+    the value must be greater than or equal to `1000`.
+
+    <time> value supports the following units;
+
+        d: day(s)           : 1d (equal to 24h)
+        h: hour(s)          : 24h (equal to 1440m)
+        m: minute(s)        : 1440m (equal to 86400s)
+        s: second(s)        : 1s (equal to 1000)
 ]])
     os.exit()
 end
