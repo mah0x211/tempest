@@ -7,6 +7,7 @@
     Created by Masatoshi Fukunaga on 18/03/09
 
 --]]
+require('signal').blockAll()
 local tempest = require('tempest')
 local getopts = require('tempest.getopts')
 local opts = getopts(...)
