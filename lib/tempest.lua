@@ -128,9 +128,9 @@ local function createWorkers( opts )
 end
 
 
---- main
+--- tempest
 -- @param arg, ...
-local function main(...)
+local function tempest(...)
     local opts = getopts(...)
     local pids, ipc, err = createWorkers( opts )
 
@@ -161,4 +161,4 @@ local function main(...)
 end
 
 
-return main
+return tempest
