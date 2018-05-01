@@ -12,7 +12,6 @@ require('tempest.bootstrap')
 local kill = require('signal').kill
 local killpg = require('signal').killpg
 local pipe = require('act.pipe')
-local getopts = require('tempest.getopts')
 local handleWorker = require('tempest.worker')
 
 
@@ -129,12 +128,9 @@ end
 
 
 --- tempest
--- @param arg, ...
-local function tempest(...)
-    local opts = getopts(...)
+-- @param opts
+local function tempest( opts )
     local pids, ipc, err = createWorkers( opts )
-
-    -- log( 'start', opts )
 
     if err then
         log.err( err )
@@ -154,7 +150,6 @@ local function tempest(...)
         end
 
         stopWorkers( pids, abort )
-        log.verbose( 'done' )
     else
         log.verbose( 'done worker' )
     end
