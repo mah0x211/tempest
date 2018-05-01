@@ -199,7 +199,7 @@ end
 -- @return err
 local function tomsec( v, def, min, max )
     if v then
-        local num, unit = strmatch( v, '^(%d+)([^%d])$' )
+        local num, unit = strmatch( v, '^(%d+)([^%d].*)$' )
         local err
         local mul = 1
 
