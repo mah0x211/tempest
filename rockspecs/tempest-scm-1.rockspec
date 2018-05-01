@@ -32,6 +32,7 @@ build = {
         ['tempest.client'] = "lib/client.lua",
         ['tempest.eval'] = "lib/eval.lua",
         ['tempest.getopts'] = "lib/getopts.lua",
+        ['tempest.ipc'] = "lib/ipc.lua",
         ['tempest.logger'] = "lib/logger.lua",
         ['tempest.worker'] = "lib/worker.lua",
     }
