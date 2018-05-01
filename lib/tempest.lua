@@ -8,6 +8,7 @@
 
 --]]
 --- file scope variables
+require('tempest.bootstrap')
 local kill = require('signal').kill
 local killpg = require('signal').killpg
 local pipe = require('act.pipe')

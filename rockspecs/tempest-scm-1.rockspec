@@ -29,6 +29,7 @@ build = {
     },
     modules = {
         tempest = "lib/tempest.lua",
+        ['tempest.bootstrap'] = "lib/bootstrap.lua",
         ['tempest.client'] = "lib/client.lua",
         ['tempest.eval'] = "lib/eval.lua",
         ['tempest.getopts'] = "lib/getopts.lua",
