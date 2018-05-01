@@ -45,7 +45,8 @@ local function stopWorkers( pids, abort )
             if err then
                 log.err( 'failed to waitpid():', err )
             -- child-process is not terminated
-            elseif not stat or not stat.exit and not stat.termsig then
+            elseif not stat or not stat.exit and not stat.termsig and
+                   not stat.nochild then
                 remain[#remain + 1] = pid
             end
         end
