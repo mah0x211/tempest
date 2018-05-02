@@ -24,7 +24,7 @@ local function stopWorkers( pids, abort )
         local ok, err = killpg( SIGUSR2 )
 
         if not ok then
-            log.err( 'failed to killpg(SIGUSR2):', err )
+            log.err( 'failed to stopWorkers():', err )
             -- killpg remaining child-processes
             for i = 1, #pids do
                 kill( SIGKILL, pids[i] )
@@ -43,7 +43,7 @@ local function stopWorkers( pids, abort )
             local stat, err = waitpid( pid )
 
             if err then
-                log.err( 'failed to waitpid():', err )
+                log.err( 'failed to stopWorkers():', err )
             -- child-process is not terminated
             elseif not stat or not stat.exit and not stat.termsig and
                    not stat.nochild then
@@ -68,20 +68,16 @@ end
 
 
 --- startWorkers
--- @param ipc
 -- @return ok
-local function startWorkers( _ )
-    local ok, err
+local function startWorkers()
+    local ok, err = killpg( SIGUSR1 )
 
-    -- TODO: wait a ready-message from workers
-    sleep(1000)
-
-    ok, err = killpg( SIGUSR1 )
     if not ok then
-        log.err( 'failed to startWorkers', err )
+        log.err( 'failed to startWorkers():', err )
+        return false
     end
 
-    return ok
+    return true
 end
 
 
@@ -89,7 +85,6 @@ end
 -- @param opts
 -- @return pids
 -- @return ipc
--- @return err
 local function createWorkers( opts )
     -- calc a number of clients per worker
     local nworker = opts.worker
@@ -98,7 +93,8 @@ local function createWorkers( opts )
     local ipc, perr = pipe.new()
 
     if perr then
-        return nil, nil, perr
+        log.err( 'failed createWorkers():', perr )
+        return
     end
 
     for _ = 1, nworker do
@@ -106,13 +102,17 @@ local function createWorkers( opts )
         local pid, err, again = fork()
 
         if err then
+            log.err( 'failed createWorkers():', err )
             ipc:close()
             stopWorkers( pids, true )
-            return nil, nil, err
+            return
         elseif again then
+            log.err(
+                'failed createWorkers(): number of process limits exceeded'
+            )
             ipc:close()
             stopWorkers( pids, true )
-            return nil, nil, 'number of process limits exceeded'
+            return
         -- run in child process
         elseif pid == 0 then
             handleWorker( ipc, opts, nclient )
@@ -131,11 +131,9 @@ end
 --- tempest
 -- @param opts
 local function tempest( opts )
-    local pids, ipc, err = createWorkers( opts )
+    local pids, ipc = createWorkers( opts )
 
-    if err then
-        log.err( err )
-    elseif pids then
+    if pids then
         local abort = not startWorkers( ipc )
 
         if not abort then

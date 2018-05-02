@@ -16,7 +16,6 @@ local handleClient = require('tempest.client')
 -- @param nclient
 -- @param stat
 -- @return cids
--- @return err
 local function createClients( nclient, stat )
     local cids = {}
 
@@ -25,7 +24,8 @@ local function createClients( nclient, stat )
         local cid, err = spawn( handleClient, stat )
 
         if err then
-            return nil, err
+            log.err( 'failed to createClients():', err )
+            return nil
         end
         cids[i] = cid
     end
@@ -60,23 +60,17 @@ local function handleWorker( _, opts, nclient )
         esendtimeo = 0,
         erecvtimeo = 0,
     }
-    local cids, err = createClients( nclient, stat )
+    local cids = createClients( nclient, stat )
 
-    if err then
-        log.err( 'failed to createClients():', err )
-    else
-        local signo
+    if cids then
+        local signo, err = sigwait( nil, SIGUSR1, SIGUSR2 )
 
-        -- TODO: send ready message to parent
-        log.verbose( 'ready' )
-
-        signo, err = sigwait( nil, SIGUSR1, SIGUSR2 )
         if err then
             stat.failure = true
-            log.err( 'abort by error', err )
+            log.err( 'abort handleWorker():', err )
         elseif signo ~= SIGUSR1 then
             stat.abort = true
-            log.notice( 'abort' )
+            log.notice( 'abort handleWorker()' )
         -- start
         else
             local sec
@@ -97,10 +91,10 @@ local function handleWorker( _, opts, nclient )
 
             if err then
                 stat.failure = true
-                log.err( 'stopped by error', err )
+                log.err( 'failed to handleWorker(): stopped by error -', err )
             elseif signo == SIGUSR2 then
                 stat.abort = true
-                log.notice( 'stopped by signal' )
+                log.notice( 'abort handleWorker(): stopped by signal' )
             else
                 log.verbose( 'stopped', stat.elapsed, 'sec' )
             end
