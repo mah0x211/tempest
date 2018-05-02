@@ -18,27 +18,29 @@ local IPC = {}
 
 --- read
 -- @return val
--- @return err
--- @return timeout
 function IPC:read( msec )
     local buf = self.buf
 
     while true do
         local val, use, err, again = decode( buf )
 
-        if val then
-            self.buf = buf:sub( use + 1 )
-            return val
-        elseif not again then
-            return nil, err
-        else
+        if again then
             local data, rerr, timeout = self.pipe:read( msec )
 
-            if data then
-                buf = buf .. data
-            else
-                return nil, rerr, timeout
+            if timeout then
+                log.err( 'failed to IPC:read(): timeout' )
+                return
+            elseif rerr then
+                log.err( 'failed to IPC:read():', rerr )
+                return
             end
+            buf = buf .. data
+        elseif err then
+            log.err( 'failed to IPC:read():', err )
+            return
+        else
+            self.buf = buf:sub( use + 1 )
+            return val
         end
     end
 end
@@ -47,41 +49,45 @@ end
 --- write
 -- @param val
 -- @return ok
--- @return err
--- @return timeout
-function IPC:write( val )
+function IPC:write( val, msec )
     local data, err = encode( val )
 
-    if data then
-        local len, werr = self.pipe:write( data )
+    if err then
+        log.err( 'failed to IPC:write():', err )
+    else
+        local bytes = #data
+        local len, werr, timeout = self.pipe:write( data, msec )
 
-        if werr then
-            return false, werr
+        if timeout then
+            log.err( 'failed to IPC:write(): timeout' )
+        elseif werr then
+            log.err( 'failed to IPC:write():', err )
+        elseif len ~= bytes then
+            log.err( 'failed to IPC:write(): UNEXPECTED-IMPLEMENTATION' )
+        else
+            return true
         end
-
-        return len ~= nil
     end
 
-    return false, err
+    return false
 end
 
 
 --- new
 -- @return ipc
--- @return err
 local function new()
     local pipe, err = NewPipe()
 
-    if err then
-        return nil, err
+    if pipe then
+        return setmetatable({
+            pipe = pipe,
+            buf = ''
+        }, {
+            __index = IPC
+        })
     end
 
-    return setmetatable({
-        pipe = pipe,
-        buf = ''
-    }, {
-        __index = IPC
-    })
+    log.err( 'failed to IPC.new()', err )
 end
 
 
