@@ -10,6 +10,7 @@
 --- file-scope variables
 local isa = require('isa')
 local eval = require('tempest.eval')
+local logger = require('tempest.logger')
 local strsplit = require('string.split')
 local error = error
 local pairs = pairs
@@ -19,6 +20,7 @@ local strfind = string.find
 local strformat = string.format
 local strmatch = string.match
 local strsub = string.sub
+local toupper = string.upper
 local tonumber = tonumber
 local tostring = tostring
 local unpack = unpack or table.unpack
@@ -146,6 +148,7 @@ Options:
     -t, --timeout=<time>    : send and recv timeout (default `5s`)
     --rcvtimeo=<time>       : recv timeout  (default same as `-t` value)
     --sndtimeo=<time>       : send timeout  (default same as `-t` value)
+    --loglevel=<level>      : set output log-level (default: `debug`)
     -s, --script=<pathname> : scenario script
     address                 : specify target address in the following format;
                               `[host]:port`
@@ -156,10 +159,19 @@ NOTE:
 
     <time> value supports the following units;
 
-        d: day(s)           : 1d (equal to 24h)
-        h: hour(s)          : 24h (equal to 1440m)
-        m: minute(s)        : 1440m (equal to 86400s)
-        s: second(s)        : 1s (equal to 1000)
+        d                   : day(s), 1d (equal to 24h)
+        h                   : hour(s), 24h (equal to 1440m)
+        m                   : minute(s), 1440m (equal to 86400s)
+        s                   : second(s), 1s (equal to 1000)
+
+    <level> value supports the followings;
+
+        debug               : output debug log and logs of following levels
+        verbose             : output verbose log and logs of following levels
+        notice              : output notice log and logs of following levels
+        warning             : output warning log and logs of following levels
+        info                : output info log and logs of following levels
+        error               : output error log
 ]])
     os.exit()
 end
@@ -281,7 +293,8 @@ local function getopts( ... )
         t = 'timeout',
         s = 'script',
         'rcvtimeo',
-        'sndtimeo'
+        'sndtimeo',
+        'loglevel',
     }, ... )
 
     if err then
@@ -325,6 +338,19 @@ local function getopts( ... )
     opts.sndtimeo, err = tomsec( opts.sndtimeo, opts.timeout, 1000 * 1 )
     if err then
         printUsage( 'invalid sndtimeo option: ' .. err )
+    end
+
+    -- check loglevel
+    if opts.loglevel ~= nil then
+        local lv = logger[toupper(opts.loglevel)]
+
+        if not isa.uint( lv ) then
+            printUsage(strformat(
+                'invalid loglevel option: unknown loglevel %q', opts.loglevel
+            ))
+        end
+
+        opts.loglevel = lv
     end
 
     -- check addr
