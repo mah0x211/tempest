@@ -35,6 +35,9 @@ local LOG_LEVEL_FMT = {
     [VERBOSE]   = '%s [%d:verbose] ',
     [DEBUG]     = '%s [%d:debug:%s:%d] ',
 }
+--- file-scope variables
+local OUPUT_LOG_LEVEL = DEBUG
+
 
 --- tostrv - returns a string-vector
 -- @param ...
@@ -67,9 +70,11 @@ end
 -- @param info
 -- @param ...
 local function output( lv, info, ... )
-    write( format( LOG_LEVEL_FMT[lv],
-        date( ISO8601_FMT ), getpid(), info.short_src, info.currentline
-    ), concat( tostrv( ... ), ' ' ), '\n' )
+    if lv <= OUPUT_LOG_LEVEL then
+        write( format( LOG_LEVEL_FMT[lv],
+            date( ISO8601_FMT ), getpid(), info.short_src, info.currentline
+        ), concat( tostrv( ... ), ' ' ), '\n' )
+    end
 end
 
 
@@ -111,3 +116,28 @@ _G.log = setmetatable({
         info( ... )
     end
 })
+
+
+--- setlevel
+-- @param lv
+-- @return ok
+local function setlevel( lv )
+    if LOG_LEVEL_FMT[lv] then
+        OUPUT_LOG_LEVEL = lv
+        return true
+    end
+
+    log.err('failed to setlevel(): invalid log-level')
+    return false
+end
+
+
+return {
+    ERROR = ERROR,
+    INFO = INFO,
+    WARNING = WARNING,
+    NOTICE = NOTICE,
+    VERBOSE = VERBOSE,
+    DEBUG = DEBUG,
+    setlevel = setlevel,
+}
