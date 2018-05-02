@@ -9,10 +9,11 @@
 --]]
 --- file scope variables
 require('tempest.bootstrap')
+local isa = require('isa')
 local kill = require('signal').kill
 local killpg = require('signal').killpg
-local pipe = require('act.pipe')
 local handleWorker = require('tempest.worker')
+local IPC = require('tempest.ipc')
 
 
 --- stopWorkers
@@ -86,45 +87,62 @@ end
 -- @return pids
 -- @return ipc
 local function createWorkers( opts )
-    -- calc a number of clients per worker
-    local nworker = opts.worker
-    local nclient = opts.client
-    local pids = {}
-    local ipc, perr = pipe.new()
+    local ipc = IPC.new()
 
-    if perr then
-        log.err( 'failed createWorkers():', perr )
-        return
-    end
+    if ipc then
+        local nworker = opts.worker
+        local nclient = opts.client
+        local pids = {}
 
-    for _ = 1, nworker do
-        -- create child-process
-        local pid, err, again = fork()
+        for i = 1, nworker do
+            -- create child-process
+            local pid, err, again = fork()
 
-        if err then
-            log.err( 'failed createWorkers():', err )
-            ipc:close()
-            stopWorkers( pids, true )
-            return
-        elseif again then
-            log.err(
-                'failed createWorkers(): number of process limits exceeded'
-            )
-            ipc:close()
-            stopWorkers( pids, true )
-            return
-        -- run in child process
-        elseif pid == 0 then
-            handleWorker( ipc, opts, nclient )
-            return
+            if err then
+                log.err( 'failed createWorkers():', err )
+                ipc:close()
+                stopWorkers( pids, true )
+                break
+            elseif again then
+                log.err(
+                    'failed createWorkers(): number of process limits exceeded'
+                )
+                ipc:close()
+                stopWorkers( pids, true )
+                break
+            -- run in child process
+            elseif pid == 0 then
+                handleWorker( ipc, opts, nclient )
+                break
+            else
+                local msg
+
+                -- save child-pid
+                pids[#pids + 1] = pid
+                log.verbose( 'spawn worker', pid )
+
+                -- wait a ready-message from worker
+                msg = ipc:read(1000)
+                if not msg then
+                    ipc:close()
+                    stopWorkers( pids, true )
+                    break
+                elseif not isa.string( msg ) or msg ~= 'ready' then
+                    log.err(
+                        'failed to createWorkers(): unknown ipc message - ', msg
+                    )
+                    ipc:close()
+                    stopWorkers( pids, true )
+                    break
+                end
+
+                -- nworker has been created
+                if i == nworker then
+                    return pids, ipc
+                end
+            end
         end
-
-        -- save child-pid
-        pids[#pids + 1] = pid
-        log.verbose( 'spawn worker', pid )
     end
-
-    return pids, ipc
 end
 
 

@@ -42,7 +42,7 @@ end
 --  .rcvtimeo
 --  .sndtimeo
 -- @param nclient
-local function handleWorker( _, opts, nclient )
+local function handleWorker( ipc, opts, nclient )
     local stat = {
         done = false,
         host = opts.host,
@@ -62,7 +62,7 @@ local function handleWorker( _, opts, nclient )
     }
     local cids = createClients( nclient, stat )
 
-    if cids then
+    if cids and ipc:write( 'ready' ) then
         local signo, err = sigwait( nil, SIGUSR1, SIGUSR2 )
 
         if err then
