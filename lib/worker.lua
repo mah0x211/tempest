@@ -73,7 +73,7 @@ local function handleWorker( ipc, opts, nclient )
             log.notice( 'abort handleWorker()' )
         -- start
         else
-            local sec
+            local started, stopped
 
             -- resume clients
             log.verbose( 'start load testing' )
@@ -82,12 +82,13 @@ local function handleWorker( ipc, opts, nclient )
             end
 
             -- wait signal
-            sec = gettimeofday()
+            started = gettimeofday()
             signo, err = sigwait( opts.duration, SIGUSR2 )
             -- calcs the number of completed requests
-            stat.elapsed = gettimeofday() - sec
-            stat.nreq = stat.nsend - (stat.nsend - stat.nrecv);
-            stat.RPS = stat.nreq / stat.elapsed
+            stopped = gettimeofday()
+            stat.started = started
+            stat.stopped = stopped
+            stat.elapsed = stopped - started
 
             if err then
                 stat.failure = true
