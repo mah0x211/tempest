@@ -18,9 +18,11 @@ local IPC = require('tempest.ipc')
 
 --- stopWorkers
 -- @param pids
+-- @param abort
+-- @return nterm
 local function stopWorkers( pids, abort )
     if #pids == 0 then
-        return
+        return 0
     elseif abort == true then
         local ok, err = killpg( SIGUSR2 )
 
@@ -30,8 +32,12 @@ local function stopWorkers( pids, abort )
             for i = 1, #pids do
                 kill( SIGKILL, pids[i] )
             end
+
+            return 0
         end
     end
+
+    local nterm = 0
 
     log.verbose( 'waitpid:', pids )
     for _ = 1, 10 do
@@ -49,22 +55,25 @@ local function stopWorkers( pids, abort )
             elseif not stat or not stat.exit and not stat.termsig and
                    not stat.nochild then
                 remain[#remain + 1] = pid
+            else
+                nterm = nterm + 1
             end
         end
 
         -- all child processes terminated
         pids = remain
         if #pids == 0 then
-            return
+            return nterm
         end
-        log(remain)
     end
 
     -- kill remaining child-processes
     for i = 1, #pids do
-        log.warn( '[main] kill( SIGKILL,', pids[i], ')' )
+        log.verbose( 'kill( SIGKILL,', pids[i], ')' )
         kill( SIGKILL, pids[i] )
     end
+
+    return nterm
 end
 
 
