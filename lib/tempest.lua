@@ -14,6 +14,7 @@ local kill = require('signal').kill
 local killpg = require('signal').killpg
 local handleWorker = require('tempest.worker')
 local IPC = require('tempest.ipc')
+local strformat = string.format
 
 
 --- collectStats
@@ -63,6 +64,66 @@ local function collectStats( ipc, nstat )
     stats.elapsed = stats.stopped - stats.started
 
     return stats
+end
+
+
+--- toReadable
+local function toReadable( n )
+    assert( type( n ) == 'number', 'invalid argument' )
+    -- GB
+    if n > 1000000000 then
+        return n / 1000000000, 'GB'
+    -- MB
+    elseif n > 1000000 then
+        return n / 1000000, 'MB'
+    -- KB
+    elseif n > 1000 then
+        return n / 1000, 'KB'
+    end
+
+    return n, 'B'
+end
+
+
+--- printStats
+-- @param stats
+local function printStats( stats )
+    local sbyte, sunit = toReadable( stats.bytes_sent )
+    local rbyte, runit = toReadable( stats.bytes_recv )
+    local sbyte_sec, sunit_sec = toReadable( stats.bytes_sent / stats.elapsed )
+    local rbyte_sec, runit_sec = toReadable( stats.bytes_recv / stats.elapsed )
+
+    print(strformat([[
+
+Requests:
+  total requests: %d in %f sec
+    requests/sec: %f
+Transfer
+      total send: %.4f %s
+      total recv: %.4f %s
+        send/sec: %.4f %s
+        recv/sec: %.4f %s
+Errors
+         connect: %d
+            recv: %d
+            send: %d
+    recv timeout: %d
+    send timeout: %d
+        internal: %d
+]],
+        stats.nrecv, stats.elapsed,
+        stats.nrecv / stats.elapsed,
+        sbyte, sunit,
+        rbyte, runit,
+        sbyte_sec, sunit_sec,
+        rbyte_sec, runit_sec,
+        stats.econnect,
+        stats.erecv,
+        stats.esend,
+        stats.erecvtimeo,
+        stats.esendtimeo,
+        stats.einternal
+    ))
 end
 
 
