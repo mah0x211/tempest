@@ -83,6 +83,25 @@ function IPC:write( val, msec )
 end
 
 
+--- accept
+-- @return req
+-- @return err
+function IPC:accept()
+    -- wait a request
+    local req, err = self:read()
+
+    if req ~= nil then
+        if isa.table( req ) and req.IPC_MSG == M_REQUEST then
+            req.IPC_MSG = nil
+            return req
+        end
+        err = 'UNEXPECTED-REQUEST-MESSAGE'
+    end
+
+    return nil, err
+end
+
+
 --- request
 -- @param msg
 -- @param msec
