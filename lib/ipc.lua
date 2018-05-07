@@ -17,6 +17,7 @@ local M_OK = 0
 local M_PING = 1
 local M_PONG = 2
 local M_REQUEST = 3
+local M_STAT = 4
 
 
 --- class IPC
@@ -30,6 +31,7 @@ end
 
 
 --- read
+-- @param msec
 -- @return val
 -- @return err
 -- @return timeout
@@ -82,6 +84,27 @@ function IPC:write( val, msec )
     end
 
     return false, err
+end
+
+
+--- readStat
+-- @param msec
+-- @return stat
+-- @return err
+function IPC:readStat( msec )
+    -- wait a request
+    local stat, err, timeout = self:read( msec )
+
+    if stat ~= nil then
+        if isa.table( stat ) and stat.IPC_MSG == M_STAT then
+            stat.IPC_MSG = nil
+            return stat
+        end
+
+        err = 'UNEXPECTED-STAT-MESSAGE'
+    end
+
+    return nil, err, timeout
 end
 
 
@@ -169,13 +192,10 @@ function IPC:ping( msec )
 
         res, err, timeout = self:read( msec )
         if res ~= nil then
-            if not isa.table( res ) then
-                err = 'UNEXPECTED-RESPONSE-MESSAGE'
-            elseif res.IPC_MSG == M_PONG then
+            if isa.table( res ) and res.IPC_MSG == M_PONG then
                 return true
-            else
-                err = 'UNEXPECTED-RESPONSE-MESSAGE'
             end
+            err = 'UNEXPECTED-RESPONSE-MESSAGE'
         end
     end
 
