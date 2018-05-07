@@ -273,6 +273,7 @@ local function tempest( opts )
 
     if pids then
         local abort = not startWorkers( ipc )
+        local nterm
 
         if not abort then
             local signo, serr = sigwait( opts.duration, SIGINT )
@@ -286,7 +287,10 @@ local function tempest( opts )
             end
         end
 
-        stopWorkers( pids, abort )
+        nterm = stopWorkers( pids, abort )
+        if not abort then
+            printStats( collectStats( ipc, nterm ) )
+        end
     else
         log.verbose( 'done worker' )
     end
