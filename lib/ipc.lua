@@ -119,7 +119,7 @@ function IPC:request( msg, msec )
         local res
 
         -- wait a response from worker
-        res, err, timeout = self.ipc:read( msec )
+        res, err, timeout = self:read( msec )
         if res ~= nil then
             if not isa.table( res ) then
                 err = 'UNEXPECTED-RESPONSE-MESSAGE'
