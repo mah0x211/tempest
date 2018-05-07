@@ -8,24 +8,26 @@
 
 --]]
 --- file scope variables
+local kill = require('signal').kill
 local gettimeofday = require('process').gettimeofday
-local handleClient = require('tempest.client')
+local IPC = require('tempest.ipc')
+local Client = require('tempest.client')
 
 
---- createClients
+--- createClient
 -- @param nclient
 -- @param stat
 -- @return cids
-local function createClients( nclient, stat )
+-- @return err
+local function createClient( nclient, stat )
     local cids = {}
 
-    log.verbose( 'create', nclient, 'client' )
+    -- create clients
     for i = 1, nclient do
-        local cid, err = spawn( handleClient, stat )
+        local cid, err = spawn( Client, stat )
 
         if err then
-            log.err( 'failed to createClients():', err )
-            return nil
+            return nil, err
         end
         cids[i] = cid
     end
@@ -34,21 +36,16 @@ local function createClients( nclient, stat )
 end
 
 
---- worker
+--- handleRequest
 -- @param ipc
--- @param opt
---  .host
---  .port
---  .rcvtimeo
---  .sndtimeo
--- @param nclient
-local function handleWorker( ipc, opts, nclient )
+-- @param req
+-- @return err
+local function handleRequest( ipc, req )
     local stat = {
-        done = false,
-        host = opts.host,
-        port = opts.port,
-        rcvtimeo = opts.rcvtimeo,
-        sndtimeo = opts.sndtimeo,
+        host = req.host,
+        port = req.port,
+        rcvtimeo = req.rcvtimeo,
+        sndtimeo = req.sndtimeo,
         bytes_sent = 0,
         bytes_recv = 0,
         nsend = 0,
@@ -60,53 +57,173 @@ local function handleWorker( ipc, opts, nclient )
         esendtimeo = 0,
         erecvtimeo = 0,
     }
-    local cids = createClients( nclient, stat )
+    local cids, err = createClient( req.client, stat )
 
-    if cids and ipc:write( 'ready' ) then
-        local signo, err = sigwait( nil, SIGUSR1, SIGUSR2 )
+    if err then
+        return err
+    end
+
+    local ok
+    ok, err = ipc:ok()
+    if not ok then
+        return err
+    end
+
+    -- wait signal
+    local signo
+    signo, err = sigwait( nil, SIGUSR1, SIGQUIT )
+    if err then
+        return err
+    -- aborted by SIGQUIT
+    elseif signo == SIGQUIT then
+        return 'aborted by signal'
+    end
+
+    -- make stress
+    for i = 1, #cids do
+        resume( cids[i] )
+    end
+    stat.started = gettimeofday()
+    signo, err = sigwait( req.duration, SIGQUIT )
+    stat.stopped = gettimeofday()
+    stat.elapsed = stat.stopped - stat.started
+
+    if err then
+        return err
+    -- aborted by SIGQUIT
+    elseif signo == SIGQUIT then
+        return 'aborted by signal'
+    end
+
+    -- send stat to parent
+    local timeout
+    ok, err, timeout = ipc:writeStat( stat, 1000 )
+    if err then
+        err = 'failed to send a stat to parent: ' .. err
+    elseif timeout then
+        err = 'failed to send a stat to parent: timeout'
+    elseif not ok then
+        err = 'failed to send a stat to parent: closed by peer'
+    end
+
+    return err
+end
+
+
+--- handleWorker
+-- @param ipc
+local function handleWorker( ipc )
+    local req = ipc:accept()
+
+    if req then
+        local err = handleRequest( ipc, req )
 
         if err then
-            stat.failure = true
-            log.err( 'abort handleWorker():', err )
-        elseif signo ~= SIGUSR1 then
-            stat.abort = true
-            log.notice( 'abort handleWorker()' )
-        -- start
-        else
-            local started, stopped
-
-            -- resume clients
-            log.verbose( 'start load testing' )
-            for i = 1, #cids do
-                resume( cids[i] )
-            end
-
-            -- wait signal
-            started = gettimeofday()
-            signo, err = sigwait( opts.duration, SIGUSR2 )
-            -- calcs the number of completed requests
-            stopped = gettimeofday()
-            stat.started = started
-            stat.stopped = stopped
-            stat.elapsed = stopped - started
-
-            if err then
-                stat.failure = true
-                log.err( 'failed to handleWorker(): stopped by error -', err )
-            elseif signo == SIGUSR2 then
-                stat.abort = true
-                log.notice( 'abort handleWorker(): stopped by signal' )
-            else
-                log.verbose( 'stopped', stat.elapsed, 'sec' )
-            end
-        end
-
-        -- send stat to parent
-        if not ipc:write( stat, 1000 ) then
-            log.err( 'failed to send a stat to parent' )
+            ipc:error( err )
         end
     end
 end
 
 
-return handleWorker
+
+--- class
+local Worker = {}
+
+
+--- close
+function Worker:close()
+    local pid = self.pid
+
+    self.ipc:close()
+    kill( SIGQUIT, pid )
+    for _ = 1, 10 do
+        local stat = waitpid( pid )
+
+        -- child-process has already terminated
+        if stat and ( stat.exit or stat.termsig or stat.nochild ) then
+            return
+        end
+        sleep(100)
+    end
+    kill( SIGKILL, pid )
+end
+
+
+--- stat
+-- @param msec
+-- @return stat
+-- @return err
+-- @return timeout
+function Worker:stat( msec )
+    return self.ipc:readStat( msec )
+end
+
+
+--- request
+-- @param req
+-- @param msec
+-- @return ok
+-- @return err
+-- @return timeout
+function Worker:request( req, msec )
+    return self.ipc:request( req, msec )
+end
+
+
+--- new
+-- @return worker
+-- @return err
+-- @return again
+local function new()
+    local ipc1, ipc2, err = IPC.new()
+    local ok, pid, again, timeout
+
+    if err then
+        return nil, err
+    end
+
+    -- create child-process
+    pid, err, again = fork()
+    if not pid then
+        ipc1:close()
+        ipc2:close()
+        return nil, err, again
+    -- run in child process
+    elseif pid == 0 then
+        ipc1:close()
+        err = handleWorker( ipc2 )
+        ipc2:close()
+        if err then
+            log.err( 'failed to handleWorker():', err )
+        end
+
+        exit()
+    end
+    ipc2:close()
+
+    -- wait a pong from worker
+    ok, err, timeout = ipc1:ping( 1000 )
+    if not ok then
+        ipc1:close()
+        kill( SIGKILL, pid )
+        if err then
+            return nil, err
+        elseif timeout then
+            return nil, 'timeout'
+        end
+
+        return nil, 'UNEXPECTED-ERROR'
+    end
+
+    return setmetatable({
+        ipc = ipc1,
+        pid = pid,
+    }, {
+        __index = Worker
+    })
+end
+
+
+return {
+    new = new
+}

@@ -265,17 +265,32 @@ end
 
 
 --- new
--- @return ipc
+-- @return ipc1
+-- @return ipc2
 -- @return err
 local function new()
-    local pipe, err = NewPipe()
+    local pipe1, err = NewPipe()
+    local pipe2
 
     if err then
-        return nil, err
+        return nil, nil, err
     end
 
+    pipe2, err = NewPipe()
+    if err then
+        return nil, nil, err
+    end
+
+    -- exchange
+    pipe1.reader, pipe2.reader = pipe2.reader, pipe1.reader
+
     return setmetatable({
-        pipe = pipe,
+        pipe = pipe1,
+        buf = ''
+    }, {
+        __index = IPC
+    }), setmetatable({
+        pipe = pipe2,
         buf = ''
     }, {
         __index = IPC

@@ -35,7 +35,7 @@ local function handleClient( stat )
     local sndtimeo = stat.sndtimeo
 
     assert( suspend() )
-    while not stat.done do
+    while true do
         local sock, cerr = NewInetClient( opts )
 
         -- connected
@@ -43,22 +43,17 @@ local function handleClient( stat )
             -- set deadlines
             sock:deadlines( rcvtimeo, sndtimeo )
 
-            while not stat.done do
+            while true do
                 local len, err, timeout = sock:send( 'hello!' )
                 local data
 
                 if err then
-                    if not stat.done then
-                        log.notice( '[client] failed to send():', err )
-                        stat.esend = stat.esend + 1
-                    end
+                    stat.esend = stat.esend + 1
                     break
                 elseif timeout then
-                    log.notice( '[client] failed to send(): timed out' )
                     stat.esendtimeo = stat.esendtimeo + 1
                     break
-                elseif len == 0 then
-                    log.notice( '[client] failed to send(): closed by peer' )
+                elseif not len or len == 0 then
                     stat.esend = stat.esend + 1
                     break
                 end
@@ -69,21 +64,12 @@ local function handleClient( stat )
                 -- receive response
                 data, err, timeout = sock:recv()
                 if err then
-                    if not stat.done then
-                        log.notice( '[client] failed to recv()', err )
-                        stat.erecv = stat.erecv + 1
-                    end
-                    break
-                elseif timeout then
-                    log.notice( '[client] failed to recv()', 'timed out' )
-                    stat.erecvtimeo = stat.erecvtimeo + 1
-                    break
-                elseif data == nil then
-                    log.notice( '[client] failed to recv(): closed by peer' )
                     stat.erecv = stat.erecv + 1
                     break
-                elseif #data ~= len then
-                    log.notice( '[client] failed to recv():', 'invalid response received' )
+                elseif timeout then
+                    stat.erecvtimeo = stat.erecvtimeo + 1
+                    break
+                elseif not data or #data ~= len then
                     stat.erecv = stat.erecv + 1
                     break
                 end
@@ -96,7 +82,6 @@ local function handleClient( stat )
 
         -- reconnect
         else
-            log.notice( '[client] failed to connect', cerr )
             stat.econnect = stat.econnect + 1
             sleep( 500 )
         end
