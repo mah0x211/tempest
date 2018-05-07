@@ -108,6 +108,21 @@ function IPC:readStat( msec )
 end
 
 
+--- writeStat
+-- @param msg
+-- @param msec
+-- @return ok
+-- @return err
+-- @return timeout
+function IPC:writeStat( msg, msec )
+    if not isa.table( msg ) then
+        return nil, 'msg must be table'
+    end
+    msg.IPC_MSG = M_STAT
+    return self:write( msg, msec )
+end
+
+
 --- accept
 -- @return req
 -- @return err
