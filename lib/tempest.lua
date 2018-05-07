@@ -16,6 +16,56 @@ local handleWorker = require('tempest.worker')
 local IPC = require('tempest.ipc')
 
 
+--- collectStats
+-- @param ipc
+-- @param nstat
+-- @return stats
+local function collectStats( ipc, nstat )
+    local stats = {
+        started = 0,
+        stopped = 0,
+        bytes_sent = 0,
+        bytes_recv = 0,
+        nsend = 0,
+        nrecv = 0,
+        econnect = 0,
+        einternal = 0,
+        esend = 0,
+        erecv = 0,
+        esendtimeo = 0,
+        erecvtimeo = 0,
+    }
+
+    for i = 1, nstat do
+        local stat = ipc:read( 1000 )
+
+        if stat then
+            stats[i] = stat
+            stats.bytes_recv = stats.bytes_recv + stat.bytes_recv
+            stats.bytes_sent = stats.bytes_sent + stat.bytes_sent
+            stats.econnect = stats.econnect + stat.econnect
+            stats.einternal = stats.einternal + stat.einternal
+            stats.erecv = stats.erecv + stat.erecv
+            stats.erecvtimeo = stats.erecvtimeo + stat.erecvtimeo
+            stats.esend = stats.esend + stat.esend
+            stats.esendtimeo = stats.esendtimeo + stat.esendtimeo
+            stats.nrecv = stats.nrecv + stat.nrecv
+            stats.nsend = stats.nsend + stat.nsend
+            if stats.started == 0 or stats.started > stat.started then
+                stats.started = stat.started
+            end
+            if stats.stopped == 0 or stats.stopped < stat.stopped then
+                stats.stopped = stat.stopped
+            end
+        end
+    end
+
+    stats.elapsed = stats.stopped - stats.started
+
+    return stats
+end
+
+
 --- stopWorkers
 -- @param pids
 -- @param abort
