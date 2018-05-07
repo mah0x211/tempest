@@ -7,10 +7,12 @@
 
 --]]
 --- file scope variables
+local isa = require('isa')
 local NewPipe = require('act.pipe').new
 local encode = require('act.aux.syscall').encode
 local decode = require('act.aux.syscall').decode
 --- constants
+local M_ERROR = -1
 local M_OK = 0
 
 
@@ -77,6 +79,24 @@ function IPC:write( val, msec )
     end
 
     return false, err
+end
+
+
+--- error
+-- @param msg
+-- @param msec
+-- @return ok
+-- @return err
+-- @return timeout
+function IPC:error( msg, msec )
+    if not isa.string( msg ) then
+        return nil, 'msg must be string'
+    end
+
+    return self:write({
+        IPC_MSG = M_ERROR,
+        message = msg
+    }, msec )
 end
 
 
