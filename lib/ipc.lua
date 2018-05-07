@@ -89,18 +89,33 @@ end
 -- @return req
 -- @return err
 function IPC:accept()
-    -- wait a request
-    local req, err = self:read()
+    while true do
+        -- wait a request
+        local req, err = self:read()
 
-    if req ~= nil then
-        if isa.table( req ) and req.IPC_MSG == M_REQUEST then
+        if err then
+            return nil, err
+        -- closed by peer
+        elseif req == nil then
+            return nil
+        elseif not isa.table( req ) then
+            return nil, 'UNEXPECTED-REQUEST-MESSAGE'
+        elseif req.IPC_MSG == M_REQUEST then
             req.IPC_MSG = nil
             return req
-        end
-        err = 'UNEXPECTED-REQUEST-MESSAGE'
-    end
+        elseif req.IPC_MSG == M_PING then
+            local ok, perr, timeout = self:pong( 1000 )
 
-    return nil, err
+            if timeout then
+                return nil, 'timeout'
+            elseif perr then
+                return nil, perr
+            -- closed by peer
+            elseif not ok then
+                return nil
+            end
+        end
+    end
 end
 
 
