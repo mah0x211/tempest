@@ -16,6 +16,12 @@ local decode = require('act.aux.syscall').decode
 local IPC = {}
 
 
+--- close
+function IPC:close()
+    self.pipe:close()
+end
+
+
 --- read
 -- @return val
 -- @return err
