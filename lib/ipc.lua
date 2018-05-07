@@ -18,6 +18,8 @@ local IPC = {}
 
 --- read
 -- @return val
+-- @return err
+-- @return timeout
 function IPC:read( msec )
     local buf = self.buf
 
@@ -27,17 +29,13 @@ function IPC:read( msec )
         if again then
             local data, rerr, timeout = self.pipe:read( msec )
 
-            if timeout then
-                log.err( 'failed to IPC:read(): timeout' )
-                return
-            elseif rerr then
-                log.err( 'failed to IPC:read():', rerr )
-                return
+            if not data then
+                return nil, rerr, timeout
             end
+
             buf = buf .. data
         elseif err then
-            log.err( 'failed to IPC:read():', err )
-            return
+            return nil, err
         else
             self.buf = buf:sub( use + 1 )
             return val
@@ -49,45 +47,45 @@ end
 --- write
 -- @param val
 -- @return ok
+-- @return err
+-- @return timeout
 function IPC:write( val, msec )
     local data, err = encode( val )
 
-    if err then
-        log.err( 'failed to IPC:write():', err )
-    else
-        local bytes = #data
+    if data then
         local len, werr, timeout = self.pipe:write( data, msec )
 
-        if timeout then
-            log.err( 'failed to IPC:write(): timeout' )
-        elseif werr then
-            log.err( 'failed to IPC:write():', err )
-        elseif len ~= bytes then
-            log.err( 'failed to IPC:write(): UNEXPECTED-IMPLEMENTATION' )
-        else
-            return true
+        if len then
+            if len == #data then
+                return true
+            end
+
+            werr = 'UNEXPECTED-ERROR'
         end
+
+        return false, werr, timeout
     end
 
-    return false
+    return false, err
 end
 
 
 --- new
 -- @return ipc
+-- @return err
 local function new()
     local pipe, err = NewPipe()
 
-    if pipe then
-        return setmetatable({
-            pipe = pipe,
-            buf = ''
-        }, {
-            __index = IPC
-        })
+    if err then
+        return nil, err
     end
 
-    log.err( 'failed to IPC.new()', err )
+    return setmetatable({
+        pipe = pipe,
+        buf = ''
+    }, {
+        __index = IPC
+    })
 end
 
 
