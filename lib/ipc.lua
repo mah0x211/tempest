@@ -10,6 +10,8 @@
 local NewPipe = require('act.pipe').new
 local encode = require('act.aux.syscall').encode
 local decode = require('act.aux.syscall').decode
+--- constants
+local M_OK = 0
 
 
 --- class IPC
@@ -75,6 +77,18 @@ function IPC:write( val, msec )
     end
 
     return false, err
+end
+
+
+--- ok
+-- @param msec
+-- @return ok
+-- @return err
+-- @return timeout
+function IPC:ok( msec )
+    return self:write({
+        IPC_MSG = M_OK,
+    }, msec )
 end
 
 
