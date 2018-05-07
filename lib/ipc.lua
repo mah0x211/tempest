@@ -96,12 +96,16 @@ function IPC:readStat( msec )
     local stat, err, timeout = self:read( msec )
 
     if stat ~= nil then
-        if isa.table( stat ) and stat.IPC_MSG == M_STAT then
+        if not isa.table( stat ) then
+            err = 'UNEXPECTED-STAT-MESSAGE'
+        elseif stat.IPC_MSG == M_STAT then
             stat.IPC_MSG = nil
             return stat
+        elseif stat.IPC_MSG == M_ERROR then
+            err = stat.message
+        else
+            err = 'UNEXPECTED-STAT-MESSAGE'
         end
-
-        err = 'UNEXPECTED-STAT-MESSAGE'
     end
 
     return nil, err, timeout
