@@ -41,6 +41,8 @@ function IPC:read( msec )
 
             buf = buf .. data
         elseif err then
+            -- reset buffer
+            self.buf = ''
             return nil, err
         else
             self.buf = buf:sub( use + 1 )
