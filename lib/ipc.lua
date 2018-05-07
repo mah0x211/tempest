@@ -14,7 +14,9 @@ local decode = require('act.aux.syscall').decode
 --- constants
 local M_ERROR = -1
 local M_OK = 0
-local M_REQUEST = 1
+local M_PING = 1
+local M_PONG = 2
+local M_REQUEST = 3
 
 
 --- class IPC
@@ -134,6 +136,47 @@ function IPC:request( msg, msec )
     end
 
     return false, err, timeout
+end
+
+
+--- ping
+-- @param msec
+-- @return ok
+-- @return err
+-- @return timeout
+function IPC:ping( msec )
+    local ok, err, timeout = self:write({
+        IPC_MSG = M_PING,
+    }, msec )
+
+    if ok then
+        local res
+
+        res, err, timeout = self:read( msec )
+        if res ~= nil then
+            if not isa.table( res ) then
+                err = 'UNEXPECTED-RESPONSE-MESSAGE'
+            elseif res.IPC_MSG == M_PONG then
+                return true
+            else
+                err = 'UNEXPECTED-RESPONSE-MESSAGE'
+            end
+        end
+    end
+
+    return false, err, timeout
+end
+
+
+--- pong
+-- @param msec
+-- @return ok
+-- @return err
+-- @return timeout
+function IPC:pong( msec )
+    return self:write({
+        IPC_MSG = M_PONG,
+    }, msec )
 end
 
 
