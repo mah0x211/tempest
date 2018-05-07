@@ -101,9 +101,10 @@ local function handleWorker( ipc, opts, nclient )
             end
         end
 
-        --- TODO: send stat to parent
-        log(stat)
-        -- print(dump(stat))
+        -- send stat to parent
+        if not ipc:write( stat, 1000 ) then
+            log.err( 'failed to send a stat to parent' )
+        end
     end
 end
 
