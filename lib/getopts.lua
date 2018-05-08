@@ -143,7 +143,7 @@ Usage:
 Options:
     -?                      : show help (this page)
     -w, --worker=<N>        : number of workers (default `1`)
-    -c, --client=<N>        : number of client per worker (default `1`)
+    -c, --client=<N>        : number of clients (default `1`)
     -d, --duration=<time>   : duration (default `5s`)
     -t, --timeout=<time>    : send and recv timeout (default `5s`)
     --rcvtimeo=<time>       : recv timeout  (default same as `-t` value)
@@ -159,10 +159,10 @@ NOTE:
 
     <time> value supports the following units;
 
-        d                   : day(s), 1d (equal to 24h)
-        h                   : hour(s), 24h (equal to 1440m)
-        m                   : minute(s), 1440m (equal to 86400s)
-        s                   : second(s), 1s (equal to 1000)
+        s                   : second(s), 1s equal to 1000
+        m                   : minute(s), 1440m equal to 86400s
+        h                   : hour(s), 24h equal to 1440m
+        d                   : day(s), 1d equal to 24h
 
     <level> value supports the followings;
 

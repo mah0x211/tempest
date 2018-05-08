@@ -149,7 +149,11 @@ local Tempest = {}
 -- @return timeout
 function Tempest:execute( req, msec )
     local workers = {}
+    local client = req.client
+    local surplus = client % self.nworker
+    local nclient = ( client - surplus ) / self.nworker
 
+    req.nclient = nclient
     for i = 1, self.nworker do
         local w, err, again = Worker.new()
 
@@ -163,6 +167,14 @@ function Tempest:execute( req, msec )
             return nil, err
         end
         workers[i] = w
+
+        -- manipulate number of clients
+        if surplus > 0 then
+            surplus = surplus - 1
+            req.nclient = nclient + 1
+        else
+            req.nclient = nclient
+        end
 
         local ok, timeout
         ok, err, timeout = w:request( req, msec )

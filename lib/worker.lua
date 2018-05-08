@@ -57,7 +57,7 @@ local function handleRequest( ipc, req )
         esendtimeo = 0,
         erecvtimeo = 0,
     }
-    local cids, err = createClient( req.client, stat )
+    local cids, err = createClient( req.nclient, stat )
 
     if err then
         return err
