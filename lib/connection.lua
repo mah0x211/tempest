@@ -2,16 +2,17 @@
 
   Copyright (C) 2018 Masatoshi Fukunaga
 
-  lib/client.lua
+  lib/connection.lua
   tempest
   Created by Masatoshi Fukunaga on 18/04/26
 
 --]]
+
 --- file scope variables
 local NewInetClient = require('net.stream.inet').client.new
 
 
---- handleClient
+--- handleConnection
 -- @param stat
 --  .host
 --  .port
@@ -26,7 +27,7 @@ local NewInetClient = require('net.stream.inet').client.new
 --  .erecv
 --  .esendtimeo
 --  .erecvtimeo
-local function handleClient( stat )
+local function handleConnection( stat )
     local opts = {
         host = stat.host,
         port = stat.port,
@@ -89,4 +90,4 @@ local function handleClient( stat )
 end
 
 
-return handleClient
+return handleConnection

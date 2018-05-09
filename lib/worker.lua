@@ -11,7 +11,7 @@
 local kill = require('signal').kill
 local gettimeofday = require('process').gettimeofday
 local IPC = require('tempest.ipc')
-local Client = require('tempest.client')
+local handleConnection = require('tempest.connection')
 
 
 --- createClient
@@ -24,7 +24,7 @@ local function createClient( nclient, stat )
 
     -- create clients
     for i = 1, nclient do
-        local cid, err = spawn( Client, stat )
+        local cid, err = spawn( handleConnection, stat )
 
         if err then
             return nil, err
