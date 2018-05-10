@@ -11,7 +11,9 @@
 local loadchunk = require('loadchunk')
 local normalize = require('path').normalize
 local tofile = require('path').tofile
+local getcwd = require('process').getcwd
 local strformat = string.format
+local strsub = string.sub
 -- constants
 local ENV = require('tempest.env')
 
@@ -21,6 +23,10 @@ local ENV = require('tempest.env')
 -- @return str
 -- @return err
 local function realpath( pathname )
+    if strsub( pathname, 1, 1 ) ~= '/' then
+        return tofile( normalize( getcwd(), pathname ) )
+    end
+
     return tofile( normalize( pathname ) )
 end
 
