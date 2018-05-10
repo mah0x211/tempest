@@ -31,6 +31,7 @@ build = {
         tempest = "lib/tempest.lua",
         ['tempest.bootstrap'] = "lib/bootstrap.lua",
         ['tempest.connection'] = "lib/connection.lua",
+        ['tempest.env'] = "lib/env.lua",
         ['tempest.eval'] = "lib/eval.lua",
         ['tempest.getopts'] = "lib/getopts.lua",
         ['tempest.ipc'] = "lib/ipc.lua",
