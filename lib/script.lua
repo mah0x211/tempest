@@ -2,7 +2,7 @@
 
   Copyright (C) 2018 Masatoshi Fukunaga
 
-  lib/eval.lua
+  lib/script.lua
   tempest
   Created by Masatoshi Fukunaga on 18/03/19
 
@@ -31,11 +31,11 @@ local function realpath( pathname )
 end
 
 
---- eval
+--- compile
 -- @param pathname
 -- @return fn
 -- @return err
-local function eval( pathname )
+local function compile( pathname )
     local fullpath, err = realpath( pathname )
 
     if err then
@@ -48,5 +48,8 @@ local function eval( pathname )
 end
 
 
-return eval
+return {
+    compile = compile
+}
+
 

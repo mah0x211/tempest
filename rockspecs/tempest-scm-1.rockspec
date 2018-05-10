@@ -32,10 +32,10 @@ build = {
         ['tempest.bootstrap'] = "lib/bootstrap.lua",
         ['tempest.connection'] = "lib/connection.lua",
         ['tempest.env'] = "lib/env.lua",
-        ['tempest.eval'] = "lib/eval.lua",
         ['tempest.getopts'] = "lib/getopts.lua",
         ['tempest.ipc'] = "lib/ipc.lua",
         ['tempest.logger'] = "lib/logger.lua",
+        ['tempest.script'] = "lib/script.lua",
         ['tempest.worker'] = "lib/worker.lua",
     }
 }

@@ -9,7 +9,7 @@
 --]]
 --- file-scope variables
 local isa = require('isa')
-local eval = require('tempest.eval')
+local compile = require('tempest.script').compile
 local logger = require('tempest.logger')
 local strsplit = require('string.split')
 local error = error
@@ -361,7 +361,7 @@ local function getopts( ... )
 
     -- check script
     if opts.script then
-        opts.script, err = eval( opts.script )
+        opts.script, err = compile( opts.script )
         if err then
             printUsage( 'invalid script: ' .. err )
         end
