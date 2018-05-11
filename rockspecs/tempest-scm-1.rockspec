@@ -37,5 +37,6 @@ build = {
         ['tempest.logger'] = "lib/logger.lua",
         ['tempest.script'] = "lib/script.lua",
         ['tempest.worker'] = "lib/worker.lua",
+        ['tempest.handler.echo'] = "handler/echo.lua",
     }
 }
