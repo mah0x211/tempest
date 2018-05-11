@@ -10,6 +10,7 @@
 --- file-scope variables
 local isa = require('isa')
 local logger = require('tempest.logger')
+local EchoHandler = require('tempest.handler.echo')
 local strsplit = require('string.split')
 local error = error
 local pairs = pairs
@@ -367,7 +368,16 @@ local function getopts( ... )
         printUsage( 'invalid address: ' .. err )
     end
 
+    -- check script
+    if opts.script then
+        opts.scriptFile = opts.script
+    -- specify default handler
+    else
+        opts.script = '<USE BUILT-IN HANDLER>'
+        opts.defaultHandler = EchoHandler
+    end
     raws.script = opts.script
+
     opts[-1] = raws
 
     return opts

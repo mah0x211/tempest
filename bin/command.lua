@@ -29,7 +29,7 @@ tempest run with following options;
    loglevel: %s
 -----------------------------------]],
     opts[-1].addr, opts[-1].worker, opts[-1].client, opts[-1].duration,
-    opts[-1].rcvtimeo, opts[-1].sndtimeo, opts[-1].script or 'NOT SPECIFIED',
+    opts[-1].rcvtimeo, opts[-1].sndtimeo, opts[-1].script,
     opts[-1].loglevel
 ))
 
@@ -40,8 +40,8 @@ if opts.loglevel then
 end
 
 
--- compile script
-if opts.script then
+-- compile scriptFile
+if opts.scriptFile then
     local chunk, err = Script.compileFile( opts.script )
     if err then
         log.err( strformat('failed to compile script %q:', opts.script ), err )
