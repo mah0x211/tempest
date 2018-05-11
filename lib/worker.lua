@@ -170,6 +170,16 @@ function Worker:request( req, msec )
 end
 
 
+--- ping
+-- @param msec
+-- @return ok
+-- @return err
+-- @return timeout
+function Worker:ping( msec )
+    return self.ipc:ping( msec )
+end
+
+
 --- new
 -- @return worker
 -- @return err
