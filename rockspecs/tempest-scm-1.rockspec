@@ -11,14 +11,14 @@ description = {
 }
 dependencies = {
     "lua >= 5.1",
-    "act",
-    "dump",
-    "isa",
-    "loadchunk",
-    "net",
-    "path",
-    "signal",
-    "string-split",
+    "act >= 0.9.1",
+    "dump >= 0.1.1",
+    "isa >= 0.1.0",
+    "loadchunk >= 0.1.0",
+    "net >= 0.21.1",
+    "path >= 1.1.0",
+    "signal >= 1.2.0",
+    "string-split >= 0.2.0",
 }
 build = {
     type = "builtin",
