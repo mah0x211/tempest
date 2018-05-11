@@ -211,10 +211,15 @@ function IPC:ping( msec )
 
         res, err, timeout = self:read( msec )
         if res ~= nil then
-            if isa.table( res ) and res.IPC_MSG == M_PONG then
+            if not isa.table( res ) then
+                err = 'UNEXPECTED-RESPONSE-MESSAGE'
+            elseif res.IPC_MSG == M_PONG then
                 return true
+            elseif res.IPC_MSG == M_ERROR then
+                err = res.message
+            else
+                err = 'UNEXPECTED-RESPONSE-MESSAGE'
             end
-            err = 'UNEXPECTED-RESPONSE-MESSAGE'
         end
     end
 
