@@ -9,7 +9,6 @@
 --]]
 --- file-scope variables
 local isa = require('isa')
-local compile = require('tempest.script').compile
 local logger = require('tempest.logger')
 local strsplit = require('string.split')
 local error = error
@@ -357,14 +356,6 @@ local function getopts( ... )
     opts.port, opts.host, err = toaddr( opts[1] )
     if err then
         printUsage( 'invalid address: ' .. err )
-    end
-
-    -- check script
-    if opts.script then
-        opts.script, err = compile( opts.script )
-        if err then
-            printUsage( 'invalid script: ' .. err )
-        end
     end
 
     return opts
