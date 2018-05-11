@@ -153,11 +153,18 @@ function Tempest:execute( req, msec )
     local surplus = client % self.nworker
     local nclient = ( client - surplus ) / self.nworker
 
-    req.nclient = nclient
     for i = 1, self.nworker do
-        local w, err, again = Worker.new()
+        -- manipulate number of clients
+        if surplus > 0 then
+            surplus = surplus - 1
+            req.nclient = nclient + 1
+        else
+            req.nclient = nclient
+        end
 
-        -- failed to create worker
+        -- create worker
+        local w, err, again = Worker.new( req )
+
         if not w then
             closeWorkers( workers )
             if again then
@@ -167,21 +174,6 @@ function Tempest:execute( req, msec )
             return nil, err
         end
         workers[i] = w
-
-        -- manipulate number of clients
-        if surplus > 0 then
-            surplus = surplus - 1
-            req.nclient = nclient + 1
-        else
-            req.nclient = nclient
-        end
-
-        local ok, timeout
-        ok, err, timeout = w:request( req, msec )
-        if not ok then
-            closeWorkers( workers )
-            return nil, err, timeout
-        end
     end
 
     -- start all workers

@@ -64,7 +64,7 @@ local function handleRequest( ipc, req )
     end
 
     local ok
-    ok, err = ipc:ok()
+    ok, err = ipc:pong()
     if not ok then
         return err
     end
@@ -112,15 +112,13 @@ end
 
 --- handleWorker
 -- @param ipc
-local function handleWorker( ipc )
-    local req = ipc:accept()
+-- @param req
+local function handleWorker( ipc, req )
+    -- TODO: compile script
+    local err = handleRequest( ipc, req )
 
-    if req then
-        local err = handleRequest( ipc, req )
-
-        if err then
-            ipc:error( err )
-        end
+    if err then
+        ipc:error( err )
     end
 end
 
@@ -181,10 +179,11 @@ end
 
 
 --- new
+-- @param req
 -- @return worker
 -- @return err
 -- @return again
-local function new()
+local function new( req )
     local ipc1, ipc2, err = IPC.new()
     local ok, pid, again, timeout
 
@@ -201,7 +200,7 @@ local function new()
     -- run in child process
     elseif pid == 0 then
         ipc1:close()
-        err = handleWorker( ipc2 )
+        err = handleWorker( ipc2, req )
         ipc2:close()
         if err then
             log.err( 'failed to handleWorker():', err )
