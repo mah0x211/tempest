@@ -43,7 +43,7 @@ local function printStats( stats )
     print(strformat([[
 
 Requests:
-  total requests: %d in %f sec
+  total requests: %d success and %d failure in %f sec
     requests/sec: %f
 Transfer
       total send: %.4f %s
@@ -58,8 +58,8 @@ Errors
     send timeout: %d
         internal: %d
 ]],
-        stats.nrecv, stats.elapsed,
-        stats.nrecv / stats.elapsed,
+        stats.success, stats.failure, stats.elapsed,
+        stats.success / stats.elapsed,
         sbyte, sunit,
         rbyte, runit,
         sbyte_sec, sunit_sec,
@@ -82,6 +82,8 @@ local function collectStats( workers, msec )
     local stats = {
         started = 0,
         stopped = 0,
+        success = 0,
+        failure = 0,
         bytes_sent = 0,
         bytes_recv = 0,
         nsend = 0,
@@ -103,6 +105,8 @@ local function collectStats( workers, msec )
             timeout = timeout
         }
         if stat then
+            stats.success = stats.success + stat.success
+            stats.failure = stats.failure + stat.failure
             stats.bytes_recv = stats.bytes_recv + stat.bytes_recv
             stats.bytes_sent = stats.bytes_sent + stat.bytes_sent
             stats.econnect = stats.econnect + stat.econnect

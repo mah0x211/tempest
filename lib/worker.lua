@@ -10,21 +10,23 @@
 --- file scope variables
 local kill = require('signal').kill
 local gettimeofday = require('process').gettimeofday
+local eval = require('tempest.script').eval
 local IPC = require('tempest.ipc')
 local handleConnection = require('tempest.connection')
 
 
 --- createClient
 -- @param nclient
+-- @param handler
 -- @param stat
 -- @return cids
 -- @return err
-local function createClient( nclient, stat )
+local function createClient( nclient, handler, stat )
     local cids = {}
 
     -- create clients
     for i = 1, nclient do
-        local cid, err = spawn( handleConnection, stat )
+        local cid, err = spawn( handleConnection, handler, stat )
 
         if err then
             return nil, err
@@ -39,13 +41,16 @@ end
 --- handleRequest
 -- @param ipc
 -- @param req
+-- @param handler
 -- @return err
-local function handleRequest( ipc, req )
+local function handleRequest( ipc, req, handler )
     local stat = {
         host = req.host,
         port = req.port,
         rcvtimeo = req.rcvtimeo,
         sndtimeo = req.sndtimeo,
+        success = 0,
+        failure = 0,
         bytes_sent = 0,
         bytes_recv = 0,
         nsend = 0,
@@ -57,7 +62,7 @@ local function handleRequest( ipc, req )
         esendtimeo = 0,
         erecvtimeo = 0,
     }
-    local cids, err = createClient( req.nclient, stat )
+    local cids, err = createClient( req.nclient, handler, stat )
 
     if err then
         return err
@@ -114,8 +119,17 @@ end
 -- @param ipc
 -- @param req
 local function handleWorker( ipc, req )
-    -- TODO: compile script
-    local err = handleRequest( ipc, req )
+    local handler, err
+
+    if req.chunk then
+        handler, err = eval( req.chunk )
+    else
+        handler = req.defaultHandler
+    end
+
+    if not err then
+        err = handleRequest( ipc, req, handler )
+    end
 
     if err then
         ipc:error( err )

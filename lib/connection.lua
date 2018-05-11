@@ -13,6 +13,7 @@ local NewInetClient = require('net.stream.inet').client.new
 
 
 --- handleConnection
+-- @param handler
 -- @param stat
 --  .host
 --  .port
@@ -27,65 +28,86 @@ local NewInetClient = require('net.stream.inet').client.new
 --  .erecv
 --  .esendtimeo
 --  .erecvtimeo
-local function handleConnection( stat )
+local function handleConnection( handler, stat )
     local opts = {
         host = stat.host,
         port = stat.port,
     }
-    local rcvtimeo = stat.rcvtimeo
-    local sndtimeo = stat.sndtimeo
+    local sock
+
+    local connect = function()
+        sock = NewInetClient( opts )
+        while not sock do
+            stat.econnect = stat.econnect + 1
+            sleep( 500 )
+            sock = NewInetClient( opts )
+        end
+        -- set deadlines
+        sock:deadlines( stat.rcvtimeo, stat.sndtimeo )
+    end
+
+    --- send
+    -- @param str
+    -- @return ok
+    local send = function( str )
+        local len, _, timeout = sock:sendsync( str )
+
+        if not len or len ~= #str then
+            if timeout then
+                stat.esendtimeo = stat.esendtimeo + 1
+            else
+                stat.esend = stat.esend + 1
+            end
+            sock:close()
+            sock = nil
+
+            return false
+        end
+
+        -- update total-sent bytes and number of sent
+        stat.bytes_sent = stat.bytes_sent + len
+        stat.nsend = stat.nsend + 1
+
+        return true
+    end
+
+    --- recv
+    -- @return data
+    -- @return len
+    local recv = function()
+        local data, _, timeout = sock:recvsync()
+        local len
+
+        if not data then
+            if timeout then
+                stat.erecvtimeo = stat.erecvtimeo + 1
+            else
+                stat.erecv = stat.erecv + 1
+            end
+            sock:close()
+            sock = nil
+
+            return nil
+        end
+
+        -- update total-recv bytes and number of recvd
+        len = #data
+        stat.bytes_recv = stat.bytes_recv + len
+        stat.nrecv = stat.nrecv + 1
+
+        return data, len
+    end
 
     assert( suspend() )
     while true do
-        local sock, cerr = NewInetClient( opts )
-
-        -- connected
-        if sock then
-            -- set deadlines
-            sock:deadlines( rcvtimeo, sndtimeo )
-
-            while true do
-                local len, err, timeout = sock:send( 'hello!' )
-                local data
-
-                if err then
-                    stat.esend = stat.esend + 1
-                    break
-                elseif timeout then
-                    stat.esendtimeo = stat.esendtimeo + 1
-                    break
-                elseif not len or len == 0 then
-                    stat.esend = stat.esend + 1
-                    break
-                end
-                -- update total-sent bytes and number of sent
-                stat.bytes_sent = stat.bytes_sent + len
-                stat.nsend = stat.nsend + 1
-
-                -- receive response
-                data, err, timeout = sock:recv()
-                if err then
-                    stat.erecv = stat.erecv + 1
-                    break
-                elseif timeout then
-                    stat.erecvtimeo = stat.erecvtimeo + 1
-                    break
-                elseif not data or #data ~= len then
-                    stat.erecv = stat.erecv + 1
-                    break
-                end
-                -- update total-recv bytes and number of recvd
-                stat.bytes_recv = stat.bytes_recv + len
-                stat.nrecv = stat.nrecv + 1
+        connect()
+        repeat
+            if handler( send, recv ) == true then
+                stat.success = stat.success + 1
+            else
+                stat.failure = stat.failure + 1
             end
-
-            sock:close()
-
-        -- reconnect
-        else
-            stat.econnect = stat.econnect + 1
-            sleep( 500 )
-        end
+        until sock == nil
     end
 end
 
