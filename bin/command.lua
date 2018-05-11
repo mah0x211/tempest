@@ -39,6 +39,19 @@ if opts.loglevel then
     require('tempest.logger').setlevel( opts.loglevel )
 end
 
+
+-- compile script
+if opts.script then
+    local chunk, err = Script.compileFile( opts.script )
+    if err then
+        log.err( strformat('failed to compile script %q:', opts.script ), err )
+        return
+    end
+
+    opts.chunk = chunk
+end
+
+
 local ok, err = require('act').run(function()
     local t = Tempest.new( opts.worker )
     local stats, err, timeout = t:execute( opts, 1000 )
