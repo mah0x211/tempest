@@ -295,6 +295,7 @@ local function getopts( ... )
         'sndtimeo',
         'loglevel',
     }, ... )
+    local raws = {}
 
     if err then
         printUsage( err )
@@ -308,38 +309,45 @@ local function getopts( ... )
     if err then
         printUsage( 'invalid worker option: ' .. err )
     end
+    raws.worker = opts.worker
 
     -- check client
     opts.client, err = touint( opts.client, 1, 1 )
     if err then
         printUsage( 'invalid client option: ' .. err )
     end
+    raws.client = opts.client
 
     -- check duration
+    raws.duration = opts.duration or '5s'
     opts.duration, err = tomsec( opts.duration, 1000 * 5, 1000 * 1 )
     if err then
         printUsage( 'invalid duration option: ' .. err )
     end
 
     -- check timeout
+    raws.timeout = opts.timeout or '1s'
     opts.timeout, err = tomsec( opts.timeout, 1000 * 1, 1000 * 1 )
     if err then
         printUsage( 'invalid timeout option: ' .. err )
     end
 
     -- check rcvtimeo
+    raws.rcvtimeo = opts.rcvtimeo or raws.timeout
     opts.rcvtimeo, err = tomsec( opts.rcvtimeo, opts.timeout, 1000 * 1 )
     if err then
         printUsage( 'invalid rcvtimeo option: ' .. err )
     end
 
     -- check sndtimeo
+    raws.sndtimeo = opts.sndtimeo or raws.timeout
     opts.sndtimeo, err = tomsec( opts.sndtimeo, opts.timeout, 1000 * 1 )
     if err then
         printUsage( 'invalid sndtimeo option: ' .. err )
     end
 
     -- check loglevel
+    raws.loglevel = opts.loglevel or 'debug'
     if opts.loglevel ~= nil then
         local lv = logger[toupper(opts.loglevel)]
 
@@ -353,10 +361,14 @@ local function getopts( ... )
     end
 
     -- check addr
+    raws.addr = opts[1]
     opts.port, opts.host, err = toaddr( opts[1] )
     if err then
         printUsage( 'invalid address: ' .. err )
     end
+
+    raws.script = opts.script
+    opts[-1] = raws
 
     return opts
 end
