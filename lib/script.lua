@@ -31,11 +31,11 @@ local function realpath( pathname )
 end
 
 
---- compile
+--- compileFile
 -- @param pathname
 -- @return fn
 -- @return err
-local function compile( pathname )
+local function compileFile( pathname )
     local fullpath, err = realpath( pathname )
 
     if err then
@@ -49,7 +49,7 @@ end
 
 
 return {
-    compile = compile
+    compileFile = compileFile,
 }
 
 
