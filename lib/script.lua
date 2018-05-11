@@ -12,6 +12,7 @@ local loadchunk = require('loadchunk')
 local normalize = require('path').normalize
 local tofile = require('path').tofile
 local getcwd = require('process').getcwd
+local type = type
 local strformat = string.format
 local strsub = string.sub
 local strdump = string.dump
@@ -55,8 +56,30 @@ local function compileFile( pathname )
 end
 
 
+--- eval
+-- @param chunk
+-- @return fn
+-- @return err
+local function eval( chunk )
+    local fn, err = loadchunk.string( chunk, ENV )
+
+    if err then
+        return nil, err
+    end
+
+    local ok, handler = pcall( fn )
+    if not ok then
+        return nil, handler
+    elseif type( handler ) ~= 'function' then
+        return nil, 'script returned an invalid handler'
+    end
+
+    return handler
+end
+
+
 return {
     compileFile = compileFile,
+    eval = eval,
 }
-
 
