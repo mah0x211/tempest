@@ -15,19 +15,6 @@ local NewInetClient = require('net.stream.inet').client.new
 --- handleConnection
 -- @param handler
 -- @param stat
---  .host
---  .port
---  .rcvtimeo
---  .sndtimeo
---  .nsend
---  .nrecv
---  .bytes_sent
---  .bytes_recv
---  .econnect
---  .esend
---  .erecv
---  .esendtimeo
---  .erecvtimeo
 local function handleConnection( handler, stat )
     local opts = {
         host = stat.host,
@@ -35,6 +22,7 @@ local function handleConnection( handler, stat )
     }
     local sock
 
+    --- connect
     local connect = function()
         sock = NewInetClient( opts )
         while not sock do
@@ -48,9 +36,11 @@ local function handleConnection( handler, stat )
 
     --- send
     -- @param str
-    -- @return ok
-    local send = function( str )
-        local len, _, timeout = sock:sendsync( str )
+    -- @return len
+    -- @return err
+    -- @return timeout
+    local function send( _, str )
+        local len, err, timeout = sock:send( str )
 
         if not len or len ~= #str then
             if timeout then
@@ -60,23 +50,47 @@ local function handleConnection( handler, stat )
             end
             sock:close()
             sock = nil
-
-            return false
+        else
+            -- update total-sent bytes and number of sent
+            stat.bytes_sent = stat.bytes_sent + len
+            stat.nsend = stat.nsend + 1
         end
 
-        -- update total-sent bytes and number of sent
-        stat.bytes_sent = stat.bytes_sent + len
-        stat.nsend = stat.nsend + 1
+        return len, err, timeout
+    end
 
-        return true
+    --- writev
+    -- @param iov
+    -- @return sock
+    -- @return len
+    -- @return err
+    -- @return timeout
+    local writev = function ( _, iov )
+        local len, err, timeout = sock:writev( iov )
+
+        if not len or len ~= iov:bytes() then
+            if timeout then
+                stat.esendtimeo = stat.esendtimeo + 1
+            else
+                stat.esend = stat.esend + 1
+            end
+            sock:close()
+            sock = nil
+        else
+            -- update total-sent bytes and number of sent
+            stat.bytes_sent = stat.bytes_sent + len
+            stat.nsend = stat.nsend + 1
+        end
+
+        return len, err, timeout
     end
 
     --- recv
     -- @return data
-    -- @return len
-    local recv = function()
-        local data, _, timeout = sock:recvsync()
-        local len
+    -- @return err
+    -- @return timeout
+    local function recv()
+        local data, err, timeout = sock:recv()
 
         if not data then
             if timeout then
@@ -86,23 +100,26 @@ local function handleConnection( handler, stat )
             end
             sock:close()
             sock = nil
-
-            return nil
+        else
+            -- update total-recv bytes and number of recvd
+            stat.bytes_recv = stat.bytes_recv + #data
+            stat.nrecv = stat.nrecv + 1
         end
 
-        -- update total-recv bytes and number of recvd
-        len = #data
-        stat.bytes_recv = stat.bytes_recv + len
-        stat.nrecv = stat.nrecv + 1
-
-        return data, len
+        return data, err, timeout
     end
+
+    local conn = {
+        send = send,
+        writev = writev,
+        recv = recv
+    }
 
     assert( suspend() )
     while true do
         connect()
         repeat
-            if handler( send, recv ) == true then
+            if handler( conn ) == true then
                 stat.success = stat.success + 1
             else
                 stat.failure = stat.failure + 1

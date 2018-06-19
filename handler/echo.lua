@@ -9,19 +9,22 @@
 --]]
 
 --- handler
--- @param send
--- @param recv
+-- @param conn
 -- @return ok
-local function handler( send, recv )
-    if send( 'hello!' ) then
-        local _, len = recv()
+local function handler( conn )
+    local len = conn:send( 'hello!' )
 
-        if len then
-            return len == 6
-        end
+    if not len then
+        return false
     end
 
-    return false
+    local str = conn:recv()
+
+    if not str or #str ~= 6 then
+        return false
+    end
+
+    return true
 end
 
 return handler
