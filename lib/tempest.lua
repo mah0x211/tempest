@@ -181,6 +181,7 @@ function Tempest:execute( req, msec )
     end
 
     -- start all workers
+    sleep(500)
     local ok, err = killpg( SIGUSR1 )
     if not ok then
         closeWorkers( workers )

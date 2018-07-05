@@ -15,7 +15,8 @@ dependencies = {
     "dump >= 0.1.1",
     "isa >= 0.1.0",
     "loadchunk >= 0.1.0",
-    "net >= 0.21.1",
+    "net >= 0.24.0",
+    "net-http >= 0.1.2",
     "path >= 1.1.0",
     "signal >= 1.2.0",
     "string-split >= 0.2.0",
@@ -38,5 +39,6 @@ build = {
         ['tempest.script'] = "lib/script.lua",
         ['tempest.worker'] = "lib/worker.lua",
         ['tempest.handler.echo'] = "handler/echo.lua",
+        ['tempest.protocol.http'] = "protocol/http.lua",
     }
 }

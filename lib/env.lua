@@ -30,6 +30,7 @@ local GLOBALIDX = {
     xpcall = xpcall,
     -- custom libs
     dump = require('dump'),
+    Http = require('tempest.protocol.http'),
 }
 GLOBALIDX._G = GLOBALIDX
 
