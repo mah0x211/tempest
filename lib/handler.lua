@@ -2,7 +2,7 @@
 
   Copyright (C) 2018 Masatoshi Fukunaga
 
-  lib/connection.lua
+  lib/handler.lua
   tempest
   Created by Masatoshi Fukunaga on 18/04/26
 
@@ -13,9 +13,9 @@ local NewInetClient = require('net.stream.inet').client.new
 
 
 --- handleConnection
--- @param handler
+-- @param script
 -- @param stat
-local function handleConnection( handler, stat )
+local function handleConnection( script, stat )
     local opts = {
         host = stat.host,
         port = stat.port,
@@ -119,7 +119,7 @@ local function handleConnection( handler, stat )
     while true do
         connect()
         repeat
-            if handler( conn ) == true then
+            if script( conn ) == true then
                 stat.success = stat.success + 1
             else
                 stat.failure = stat.failure + 1

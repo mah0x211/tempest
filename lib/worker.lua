@@ -12,21 +12,21 @@ local kill = require('signal').kill
 local gettimeofday = require('process').gettimeofday
 local eval = require('tempest.script').eval
 local IPC = require('tempest.ipc')
-local handleConnection = require('tempest.connection')
+local Handler = require('tempest.handler')
 
 
---- createClient
+--- spawnHandler
 -- @param nclient
 -- @param script
 -- @param stat
 -- @return cids
 -- @return err
-local function createClient( nclient, script, stat )
+local function spawnHandler( nclient, script, stat )
     local cids = {}
 
     -- create clients
     for i = 1, nclient do
-        local cid, err = spawn( handleConnection, script, stat )
+        local cid, err = spawn( Handler, script, stat )
 
         if err then
             return nil, err
@@ -62,7 +62,7 @@ local function handleRequest( ipc, req, script )
         esendtimeo = 0,
         erecvtimeo = 0,
     }
-    local cids, err = createClient( req.nclient, script, stat )
+    local cids, err = spawnHandler( req.nclient, script, stat )
 
     if err then
         return err
