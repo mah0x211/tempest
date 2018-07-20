@@ -56,4 +56,18 @@ static inline void tempest_array_incr( tempest_array_t *arr, uint64_t idx )
 LUALIB_API int luaopen_tempest_array( lua_State *L );
 
 
+#define TEMPEST_TIMER_MT    "tempest.timer"
+
+typedef struct {
+    int ref;
+    tempest_array_t *arr;
+    uint64_t start;
+    uint64_t stop;
+    uint64_t ttfb;
+} tempest_timer_t;
+
+
+LUALIB_API int luaopen_tempest_timer( lua_State *L );
+
+
 #endif
