@@ -12,6 +12,7 @@ local kill = require('signal').kill
 local gettimeofday = require('process').gettimeofday
 local eval = require('tempest.script').eval
 local IPC = require('tempest.ipc')
+local Connection = require('tempest.connection')
 local Handler = require('tempest.handler')
 
 
@@ -26,12 +27,16 @@ local function spawnHandler( nclient, script, stat )
 
     -- create clients
     for i = 1, nclient do
-        local cid, err = spawn( Handler, script, stat )
+        local conn = Connection.new( stat )
+        local cid, err = spawn( Handler, conn, script )
 
         if err then
             return nil, err
         end
-        cids[i] = cid
+        cids[i] = {
+            cid = cid,
+            conn = conn,
+        }
     end
 
     return cids
@@ -84,15 +89,21 @@ local function handleRequest( ipc, req, script )
         return 'aborted by signal'
     end
 
-    -- make stress
+    -- resume all handlers
     for i = 1, #cids do
-        resume( cids[i] )
+        resume( cids[i].cid )
     end
+
     stat.started = gettimeofday()
     signo, err = sigwait( req.duration, SIGQUIT )
     stat.stopped = gettimeofday()
-    stat.elapsed = stat.stopped - stat.started
 
+    -- abort all connections
+    for i = 1, #cids do
+        cids[i].conn:abort()
+    end
+
+    stat.elapsed = stat.stopped - stat.started
     if err then
         return err
     -- aborted by SIGQUIT
