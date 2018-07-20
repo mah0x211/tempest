@@ -41,5 +41,9 @@ build = {
         ['tempest.worker'] = "lib/worker.lua",
         ['tempest.handler.echo'] = "handler/echo.lua",
         ['tempest.protocol.http'] = "protocol/http.lua",
+        ['tempest.array'] = {
+            incdirs = { "deps/lauxhlib" },
+            sources = { "src/array.c" }
+        },
     }
 }
