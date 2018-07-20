@@ -17,16 +17,16 @@ local handleConnection = require('tempest.connection')
 
 --- createClient
 -- @param nclient
--- @param handler
+-- @param script
 -- @param stat
 -- @return cids
 -- @return err
-local function createClient( nclient, handler, stat )
+local function createClient( nclient, script, stat )
     local cids = {}
 
     -- create clients
     for i = 1, nclient do
-        local cid, err = spawn( handleConnection, handler, stat )
+        local cid, err = spawn( handleConnection, script, stat )
 
         if err then
             return nil, err
@@ -41,9 +41,9 @@ end
 --- handleRequest
 -- @param ipc
 -- @param req
--- @param handler
+-- @param script
 -- @return err
-local function handleRequest( ipc, req, handler )
+local function handleRequest( ipc, req, script )
     local stat = {
         host = req.host,
         port = req.port,
@@ -62,7 +62,7 @@ local function handleRequest( ipc, req, handler )
         esendtimeo = 0,
         erecvtimeo = 0,
     }
-    local cids, err = createClient( req.nclient, handler, stat )
+    local cids, err = createClient( req.nclient, script, stat )
 
     if err then
         return err
@@ -119,16 +119,16 @@ end
 -- @param ipc
 -- @param req
 local function handleWorker( ipc, req )
-    local handler, err
+    local script, err
 
     if req.chunk then
-        handler, err = eval( req.chunk )
+        script, err = eval( req.chunk )
     else
-        handler = req.defaultHandler
+        script = req.defaultHandler
     end
 
     if not err then
-        err = handleRequest( ipc, req, handler )
+        err = handleRequest( ipc, req, script )
     end
 
     if err then
