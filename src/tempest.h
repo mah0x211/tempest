@@ -37,17 +37,18 @@
 #include <time.h>
 #include "lauxhlib.h"
 
-
 #define TEMPEST_ARRAY_MT    "tempest.array"
 
 typedef struct {
-    uint64_t len;
-    uint64_t *data;
+    size_t len;
+    uint32_t *data;
 } tempest_array_t;
 
 
-static inline void tempest_array_incr( tempest_array_t *arr, uint64_t idx )
+static inline void tempest_array_incr( tempest_array_t *arr, uint64_t nsec )
 {
+    size_t idx = nsec / 1000 / 10;
+
     if( idx < arr->len ){
         arr->data[idx]++;
     }

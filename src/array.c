@@ -145,7 +145,7 @@ static int gc_lua( lua_State *L )
 
 static int new_lua( lua_State *L )
 {
-    uint64_t len = (uint64_t)lauxh_checkuint8( L, 1 ) * 1000 * 10;
+    size_t len = (size_t)lauxh_checkuint8( L, 1 ) * 1000 * 100;
     tempest_array_t *arr = lua_newuserdata( L, sizeof( tempest_array_t ) );
 
     arr->data = calloc( len, sizeof( uint32_t ) );

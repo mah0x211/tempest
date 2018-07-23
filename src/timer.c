@@ -66,7 +66,7 @@ static int stop_lua( lua_State *L )
     tempest_timer_t *t = lauxh_checkudata( L, 1, TEMPEST_TIMER_MT );
 
     if( t->start ){
-        tempest_array_incr( t->arr, ( nsec - t->start ) / 1000 / 10 );
+        tempest_array_incr( t->arr, nsec - t->start );
         t->start = t->stop = t->ttfb = 0;
     }
 
@@ -95,7 +95,7 @@ static int start_lua( lua_State *L )
     tempest_timer_t *t = lauxh_checkudata( L, 1, TEMPEST_TIMER_MT );
 
     if( t->stop ){
-        tempest_array_incr( t->arr, ( t->stop - t->start ) / 1000 / 10 );
+        tempest_array_incr( t->arr, t->stop - t->start );
     }
 
     t->stop = t->ttfb = 0;
