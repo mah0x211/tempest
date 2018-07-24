@@ -10,6 +10,21 @@
 --- file-scope variables
 local HttpRequest = require('net.http.request')
 local setmetatable = setmetatable
+local getmetatable = getmetatable
+local HttpRequestSendto
+
+
+--- sendto
+-- @param req
+-- @param conn
+-- @param res
+-- @param err
+-- @param timeout
+local function sendto( req, conn )
+    conn:measure()
+    return HttpRequestSendto( req, conn )
+end
+
 
 return setmetatable({}, {
     __index = function( _, method )
@@ -23,8 +38,14 @@ return setmetatable({}, {
                     return nil, err
                 end
 
-                -- replace original send method
-                req.send = req.sendto
+                -- replace original send and sendto methods
+                if not HttpRequestSendto then
+                    local mtbl = getmetatable( req )
+
+                    HttpRequestSendto = req.sendto
+                    mtbl.__index.send = sendto
+                    mtbl.__index.sendto = sendto
+                end
 
                 return req
             end
