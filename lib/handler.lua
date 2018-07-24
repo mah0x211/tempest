@@ -55,7 +55,7 @@ local function handleConnection( conn, script )
             else
                 stat.failure = stat.failure + 1
             end
-        until conn.sock == nil
+        until conn.sock == nil or conn.aborted
     end
 
     conn:close()
