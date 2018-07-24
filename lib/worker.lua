@@ -14,6 +14,7 @@ local eval = require('tempest.script').eval
 local IPC = require('tempest.ipc')
 local Connection = require('tempest.connection')
 local Handler = require('tempest.handler')
+local Array = require('tempest.array')
 
 
 --- spawnHandler
@@ -54,6 +55,7 @@ local function handleRequest( ipc, req, script )
         port = req.port,
         rcvtimeo = req.rcvtimeo,
         sndtimeo = req.sndtimeo,
+        latency = Array.new( req.rcvtimeo / 1000 ),
         success = 0,
         failure = 0,
         bytes_sent = 0,
@@ -104,6 +106,7 @@ local function handleRequest( ipc, req, script )
     end
 
     stat.elapsed = stat.stopped - stat.started
+    stat.latency = stat.latency:encode()
     if err then
         return err
     -- aborted by SIGQUIT

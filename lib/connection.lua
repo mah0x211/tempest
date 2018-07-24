@@ -10,6 +10,7 @@
 
 --- file scope variables
 local NewInetClient = require('net.stream.inet').client.new
+local Timer = require('tempest.timer')
 
 
 --- class
@@ -59,6 +60,7 @@ function Connection:send( str )
             end
             self.sock:close()
             self.sock = nil
+            self.timer:reset()
         else
             -- update total-sent bytes and number of sent
             self.stat.bytes_sent = self.stat.bytes_sent + len
@@ -88,6 +90,7 @@ function Connection:writev( iov )
             else
                 self.stat.esend = self.stat.esend + 1
             end
+            self.timer:reset()
             self.sock:close()
             self.sock = nil
         else
@@ -111,12 +114,14 @@ function Connection:recv()
     if not self.aborted then
         local data, err, timeout = self.sock:recv()
 
+        self.timer:measure()
         if not data then
             if timeout then
                 self.stat.erecvtimeo = self.stat.erecvtimeo + 1
             else
                 self.stat.erecv = self.stat.erecv + 1
             end
+            self.timer:reset()
             self.sock:close()
             self.sock = nil
         else
@@ -132,6 +137,12 @@ function Connection:recv()
 end
 
 
+--- measure
+function Connection:measure()
+    self.timer:start()
+end
+
+
 --- abort
 function Connection:abort()
     self.aborted = true
@@ -143,6 +154,7 @@ function Connection:close()
     if self.sock then
         self.sock:close()
         self.sock = nil
+        self.timer:reset()
     end
 end
 
@@ -155,6 +167,7 @@ local function new( stat )
             host = stat.host,
             port = stat.port
         },
+        timer = Timer.new( stat.latency ),
     }, {
         __index = Connection
     })
