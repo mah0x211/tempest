@@ -138,6 +138,15 @@ function Connection:abort()
 end
 
 
+--- abort
+function Connection:close()
+    if self.sock then
+        self.sock:close()
+        self.sock = nil
+    end
+end
+
+
 local function new( stat )
     return setmetatable({
         aborted = false,

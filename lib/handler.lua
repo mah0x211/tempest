@@ -57,6 +57,8 @@ local function handleConnection( conn, script )
             end
         until conn.sock == nil
     end
+
+    conn:close()
 end
 
 
