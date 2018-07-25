@@ -83,18 +83,34 @@ static int reset_lua( lua_State *L )
 static int data_lua( lua_State *L )
 {
     tempest_array_t *arr = lauxh_checkudata( L, 1, TEMPEST_ARRAY_MT );
+    uint32_t *data = arr->data;
 
-    if( arr->data ){
+    lua_settop( L, 1 );
+    if( data )
+    {
+        size_t len = arr->len;
         size_t i = 0;
+        size_t head = 0;
+        size_t tail = 0;
 
-        lua_createtable( L, arr->len, 0 );
-        for(; i < arr->len; i++ ){
-            lauxh_pushnum2arr( L, i + 1, arr->data[i] );
+        lua_newtable( L );
+        for(; i < len; i++ )
+        {
+            if( data[i] ){
+                if( !head ){
+                    head = i;
+                }
+                tail = i;
+                lauxh_pushnum2arr( L, i, data[i] );
+            }
         }
+        lua_pushnumber( L, head );
+        lua_pushnumber( L, tail );
+
+        return 3;
     }
-    else {
-        lua_pushnil( L );
-    }
+
+    lua_pushnil( L );
 
     return 1;
 }
