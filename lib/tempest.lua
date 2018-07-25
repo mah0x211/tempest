@@ -11,7 +11,52 @@
 require('tempest.bootstrap')
 local killpg = require('signal').killpg
 local Worker = require('tempest.worker')
+local Array = require('tempest.array')
 local strformat = string.format
+--- constants
+local KILO = 1000
+local MEGA = KILO * 1000
+local GIGA = MEGA * 1000
+local TERA = GIGA * 1000
+local PETA = TERA * 1000
+local EXA = PETA * 1000
+local UNIT_SYMBOL = {
+    [KILO] = 'k',
+    [MEGA] = 'M',
+    [GIGA] = 'G',
+    [TERA] = 'T',
+    [PETA] = 'P',
+    [EXA] = 'E',
+}
+local WIDTH = 0.5
+local NGRAF = 100 * WIDTH
+local HYPHENS = ''
+local GRAPH = {
+    [0] = ''
+}
+
+for _ = 1, NGRAF do
+    HYPHENS = HYPHENS .. '-'
+end
+
+for i = 0, NGRAF do
+    local mark = ''
+
+    for _ = 1, i do
+        mark = mark .. '*'
+    end
+
+    for _ = i + 1, NGRAF do
+        mark = mark .. ' '
+    end
+
+    GRAPH[i] = mark
+end
+
+
+local function printf( fmt, ... )
+    print( strformat( fmt, ... ) )
+end
 
 
 --- toReadable
@@ -40,23 +85,25 @@ local function printStats( stats )
     local sbyte_sec, sunit_sec = toReadable( stats.bytes_sent / stats.elapsed )
     local rbyte_sec, runit_sec = toReadable( stats.bytes_recv / stats.elapsed )
 
-    print(strformat([[
+    printf([[
 
-Requests:
-  total requests: %d success and %d failure in %f sec
-    requests/sec: %f
-Transfer
-      total send: %.4f %s
-      total recv: %.4f %s
-        send/sec: %.4f %s
-        recv/sec: %.4f %s
-Errors
-         connect: %d
-            recv: %d
-            send: %d
-    recv timeout: %d
-    send timeout: %d
-        internal: %d
+[Requests]
+ total reqs: %d success and %d failure in %f sec
+       reqs: %f/s
+
+[Transfer]
+ total send: %.4f %s
+ total recv: %.4f %s
+       send: %.4f %s/s
+       recv: %.4f %s/s
+
+[Errors]
+    connect: %d
+       recv: %d
+       send: %d
+ recv timeo: %d
+ send timeo: %d
+   internal: %d
 ]],
         stats.success, stats.failure, stats.elapsed,
         stats.success / stats.elapsed,
@@ -70,7 +117,95 @@ Errors
         stats.erecvtimeo,
         stats.esendtimeo,
         stats.einternal
-    ))
+    )
+
+    if stats.latency then
+        local data, head, tail = stats.latency:data()
+        local latencies = {}
+        local idx = 0
+        local avg = 0
+        local nth = 0
+        local max = 0
+
+        -- collect
+        for i = head, tail do
+            local nreq = data[i]
+
+            if nreq then
+                local msec = i / 100
+                local msecf = math.floor( msec )
+                local unit = 1
+
+                avg = avg + i
+                nth = nth + 1
+                if latencies[idx] and latencies[idx].msec == msecf then
+                    unit = latencies[idx].unit
+                    nreq = latencies[idx].nreq + nreq
+                    latencies[idx].nreq = nreq
+                    latencies[idx].max = msec
+                else
+                    idx = idx + 1
+                    latencies[idx] = {
+                        nreq = nreq,
+                        msec = msecf,
+                        min = msec,
+                        max = msec,
+                    }
+                end
+
+                if nreq > max then
+                    max = nreq
+                end
+
+                if nreq >= EXA then
+                    unit = EXA
+                elseif nreq >= PETA then
+                    unit = PETA
+                elseif nreq >= TERA then
+                    unit = TERA
+                elseif nreq >= GIGA then
+                    unit = GIGA
+                elseif nreq >= MEGA then
+                    unit = MEGA
+                elseif nreq >= KILO then
+                    unit = KILO
+                end
+                latencies[idx].unit = unit
+            end
+        end
+
+        printf([[
+[Latency]
+    minimum: %.2f ms
+    maximum: %.2f ms
+    average: %.2f ms
+
+[Histogram]
+    latency   #reqs  %s  percentage    time-range
+------------+-------+%s+-------------+-----------------]],
+            latencies[1].min, latencies[idx].max, avg / nth / 100,
+            GRAPH[0], HYPHENS
+        )
+
+        -- histogram
+        local padding = stats.success/ max
+
+        for i = 1, idx do
+            local latency = latencies[i]
+            local ratio = latency.nreq / stats.success
+
+            printf(
+                '%8d ms | %3d %s |%s| %9.5f %% | %.2f-%.2f ms',
+                latency.msec,
+                latency.nreq / latency.unit,
+                UNIT_SYMBOL[latency.unit] or ' ',
+                GRAPH[math.floor(ratio * padding * NGRAF)],
+                ratio * 100,
+                latency.min, latency.max
+            )
+        end
+        print('')
+    end
 end
 
 
@@ -104,7 +239,18 @@ local function collectStats( workers, msec )
             err = err,
             timeout = timeout
         }
+
         if stat then
+            if stat.latency then
+                local latency = Array.decode( stat.latency )
+
+                if stats.latency then
+                    stats.latency:merge( latency )
+                else
+                    stats.latency = latency
+                end
+            end
+
             stats.success = stats.success + stat.success
             stats.failure = stats.failure + stat.failure
             stats.bytes_recv = stats.bytes_recv + stat.bytes_recv
