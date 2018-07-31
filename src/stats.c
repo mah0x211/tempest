@@ -298,7 +298,7 @@ static int gc_lua( lua_State *L )
 
 static int new_lua( lua_State *L )
 {
-    size_t len = (size_t)lauxh_checkuint16( L, 1 ) * 1000 * 100;
+    size_t len = (size_t)lauxh_checkuint32( L, 1 ) * 100;
     tempest_stat_t *s = lua_newuserdata( L, sizeof( tempest_stat_t ) );
 
     memset( (void*)s, 0, sizeof( tempest_stat_t ) );
