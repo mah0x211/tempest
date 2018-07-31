@@ -78,8 +78,31 @@ local function eval( chunk )
 end
 
 
+--- compileFunc
+-- @param fn
+-- @return chunk
+-- @return err
+local function compileFunc( fn )
+    local chunk, err = strdump( fn )
+    local _
+
+    if err then
+        return nil, err
+    end
+
+    -- pre-evaluate
+    _, err = eval( chunk )
+    if err then
+        return nil, err
+    end
+
+    return chunk
+end
+
+
 return {
     compileFile = compileFile,
+    compileFunc = compileFunc,
     eval = eval,
 }
 
