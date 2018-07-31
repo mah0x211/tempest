@@ -1,16 +1,17 @@
 package = "tempest"
 version = "scm-1"
 source = {
-    url = "git://github.com/mah0x211/lua-tempest.git"
+    url = "gitrec://github.com/mah0x211/tempest.git"
 }
 description = {
     summary = "The Tempest",
-    homepage = "https://github.com/mah0x211/lua-tempest",
+    homepage = "https://github.com/mah0x211/tempest",
     license = "",
     maintainer = "Masatoshi Fukunaga"
 }
 dependencies = {
     "lua >= 5.1",
+    "luarocks-fetch-gitrec >= 0.2",
     "act >= 0.9.1",
     "dump >= 0.1.1",
     "isa >= 0.1.0",
