@@ -11,6 +11,8 @@
 local isa = require('isa')
 local logger = require('tempest.logger')
 local EchoHandler = require('tempest.handler.echo')
+local compileFunc = require('tempest.script').compileFunc
+local compileFile = require('tempest.script').compileFile
 local strsplit = require('string.split')
 local error = error
 local pairs = pairs
@@ -370,12 +372,17 @@ local function getopts( ... )
 
     -- check script
     if opts.script then
-        opts.scriptFile = opts.script
+        opts.chunk, err = compileFile( opts.script )
     -- specify default handler
     else
         opts.script = '<USE BUILT-IN HANDLER>'
-        opts.defaultHandler = EchoHandler
+        opts.chunk, err = compileFunc( EchoHandler )
     end
+
+    if err then
+        printUsage( 'invalid script: ' .. err )
+    end
+
     raws.script = opts.script
 
     opts[-1] = raws

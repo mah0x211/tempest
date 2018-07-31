@@ -9,7 +9,6 @@
 --]]
 require('signal').blockAll()
 local Tempest = require('tempest')
-local Script = require('tempest.script')
 local getopts = require('tempest.getopts')
 local strformat = string.format
 local opts = getopts(...)
@@ -37,18 +36,6 @@ tempest run with following options;
 -- set loglevel
 if opts.loglevel then
     require('tempest.logger').setlevel( opts.loglevel )
-end
-
-
--- compile scriptFile
-if opts.scriptFile then
-    local chunk, err = Script.compileFile( opts.script )
-    if err then
-        log.err( strformat('failed to compile script %q:', opts.script ), err )
-        return
-    end
-
-    opts.chunk = chunk
 end
 
 
