@@ -135,6 +135,16 @@ static int latency_start_lua( lua_State *L )
 }
 
 
+static int latency_reset_lua( lua_State *L )
+{
+    tempest_stat_t *s = lauxh_checkudata( L, 1, MODULE_MT );
+
+    s->start = s->stop = 0;
+
+    return 0;
+}
+
+
 #define tempest_stat_add(field) do{ \
     tempest_stat_t *s = lauxh_checkudata( L, 1, MODULE_MT ); \
     uint64_t v = (uint64_t)lauxh_checkuint64( L, 2 ); \
@@ -345,6 +355,7 @@ LUALIB_API int luaopen_tempest_stats( lua_State *L )
             { "incrESend", incr_esend_lua },
             { "incrESendTimeo", incr_esend_timeo_lua },
             { "incrEInternal", incr_einternal_lua },
+            { "latencyReset", latency_reset_lua },
             { "latencyStart", latency_start_lua },
             { "latencyStop", latency_stop_lua },
             { NULL, NULL }
