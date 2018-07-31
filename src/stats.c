@@ -124,6 +124,17 @@ static int latency_stop_lua( lua_State *L )
 }
 
 
+static int latency_measure_lua( lua_State *L )
+{
+    uint64_t nsec = getnsec();
+    tempest_stat_t *s = lauxh_checkudata( L, 1, MODULE_MT );
+
+    s->stop = nsec;
+
+    return 1;
+}
+
+
 static int latency_start_lua( lua_State *L )
 {
     tempest_stat_t *s = lauxh_checkudata( L, 1, MODULE_MT );
@@ -357,6 +368,7 @@ LUALIB_API int luaopen_tempest_stats( lua_State *L )
             { "incrEInternal", incr_einternal_lua },
             { "latencyReset", latency_reset_lua },
             { "latencyStart", latency_start_lua },
+            { "latencyMeasure", latency_measure_lua },
             { "latencyStop", latency_stop_lua },
             { NULL, NULL }
         };
