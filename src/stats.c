@@ -131,7 +131,7 @@ static int latency_measure_lua( lua_State *L )
 
     s->stop = nsec;
 
-    return 1;
+    return 0;
 }
 
 
