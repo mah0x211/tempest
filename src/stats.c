@@ -139,6 +139,10 @@ static int latency_start_lua( lua_State *L )
 {
     tempest_stat_t *s = lauxh_checkudata( L, 1, MODULE_MT );
 
+    if( s->stop ){
+        tempest_stat_latency_incr( s, s->stop - s->start );
+    }
+
     s->stop = 0;
     s->start = getnsec();
 
