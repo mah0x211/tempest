@@ -33,29 +33,6 @@ local function realpath( pathname )
 end
 
 
---- compileFile
--- @param pathname
--- @return chunk
--- @return err
-local function compileFile( pathname )
-    local fullpath, err = realpath( pathname )
-    local fn
-
-    if err then
-        return nil, err
-    elseif not fullpath then
-        return nil, strformat( '%q not found', pathname )
-    end
-
-    fn, err = loadchunk.file( fullpath )
-    if err then
-        return nil, err
-    end
-
-    return strdump( fn )
-end
-
-
 --- eval
 -- @param chunk
 -- @return fn
@@ -97,6 +74,29 @@ local function compileFunc( fn )
     end
 
     return chunk
+end
+
+
+--- compileFile
+-- @param pathname
+-- @return chunk
+-- @return err
+local function compileFile( pathname )
+    local fullpath, err = realpath( pathname )
+    local fn
+
+    if err then
+        return nil, err
+    elseif not fullpath then
+        return nil, strformat( '%q not found', pathname )
+    end
+
+    fn, err = loadchunk.file( fullpath )
+    if err then
+        return nil, err
+    end
+
+    return compileFunc( fn )
 end
 
 
