@@ -27,6 +27,7 @@
 
 #include "tempest.h"
 #include <sys/mman.h>
+#include <math.h>
 
 
 #define tempest_stats_add(field) do{ \
@@ -87,11 +88,19 @@ static int data_lua( lua_State *L )
     {
         tempest_stats_data_t *data = s->data;
         uint64_t *latency = &data->latency;
+        int idx_msec = 0;
+        int idx_mgrp = 0;
+        int idx_nreq = 0;
+        double msecf = 0.0;
+        double prev_msec = 0.0;
+        double prev_msecf = 0.0;
+        uint64_t nreqs = 0;
         uint64_t min_nreq = UINT64_MAX;
         uint64_t max_nreq = 0;
         size_t avg = 0;
         size_t i = 0;
         size_t k = 0;
+        size_t g = 0;
 
         lua_settop( L, 0 );
         lua_createtable( L, 0, 12 );
@@ -105,31 +114,74 @@ static int data_lua( lua_State *L )
         lauxh_pushnum2tbl( L, "esend", data->esend );
         lauxh_pushnum2tbl( L, "esendTimeo", data->esend_timeo );
         lauxh_pushnum2tbl( L, "einternal", data->einternal );
+
+        lua_pushliteral( L, "latency_msec_grp" );
+        lua_newtable( L );
+        idx_mgrp = lua_gettop( L );
         lua_pushliteral( L, "latency_msec" );
         lua_newtable( L );
+        idx_msec = lua_gettop( L );
         lua_pushliteral( L, "latency_nreq" );
         lua_newtable( L );
+        idx_nreq = lua_gettop( L );
         for(; i < data->len; i++ )
         {
             if( latency[i] )
             {
+                uint64_t nreq = latency[i];
+                double msec = (double)i / 100;
+
+                msecf = floor( msec );
                 k++;
                 avg += i;
-                lauxh_pushnum2arrat( L, k, (double)i / 100, -3 );
-                lauxh_pushnum2arrat( L, k, latency[i], -1 );
-                if( min_nreq > latency[i] ){
-                    min_nreq = latency[i];
+                lauxh_pushnum2arrat( L, k, msec, idx_msec );
+                lauxh_pushnum2arrat( L, k, nreq, idx_nreq );
+                if( min_nreq > nreq ){
+                    min_nreq = nreq;
                 }
-                if( max_nreq < latency[i] ){
-                    max_nreq = latency[i];
+                if( max_nreq < nreq ){
+                    max_nreq = nreq;
                 }
+
+                // grouping by integer msec
+                if( g == 0 ){
+                    g = 1;
+                    nreqs = nreq;
+                    prev_msecf = msecf;
+                    lua_newtable( L );
+                    lauxh_pushnum2tbl( L, "msec", msecf );
+                    lauxh_pushnum2tbl( L, "min", msec );
+                }
+                else if( msecf != prev_msecf ){
+                    lauxh_pushnum2tbl( L, "max", prev_msec );
+                    lauxh_pushnum2tbl( L, "nreq", nreqs );
+                    lua_rawseti( L, idx_mgrp, g );
+
+                    g++;
+                    prev_msecf = msecf;
+                    nreqs = nreq;
+                    lua_newtable( L );
+                    lauxh_pushnum2tbl( L, "msec", msecf );
+                    lauxh_pushnum2tbl( L, "min", msec );
+                }
+                else {
+                    nreqs += nreq;
+                }
+                prev_msec = msec;
             }
         }
-        lauxh_pushnum2tblat( L, "avg", (double)avg / (double)k / 100, -3 );
-        lauxh_pushnum2tblat( L, "min", min_nreq, -1 );
-        lauxh_pushnum2tblat( L, "max", max_nreq, -1 );
-        lua_rawset( L, -5 );
-        lua_rawset( L, -3 );
+
+        if( g ){
+            lauxh_pushnum2tbl( L, "max", prev_msec );
+            lauxh_pushnum2tbl( L, "nreq", nreqs );
+            lua_rawseti( L, idx_mgrp, g );
+        }
+        lauxh_pushnum2tblat( L, "avg", (double)avg / (double)k / 100.0, idx_msec );
+        lauxh_pushnum2tblat( L, "min", min_nreq, idx_nreq );
+        lauxh_pushnum2tblat( L, "max", max_nreq, idx_nreq );
+        lua_rawset( L, 1 );
+        lua_rawset( L, 1 );
+        lua_rawset( L, 1 );
     }
 
     return 1;
