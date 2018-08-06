@@ -37,6 +37,48 @@
 #include <time.h>
 #include "lauxhlib.h"
 
+
+#define TEMPEST_STATS_MT    "tempest.stats"
+
+typedef struct {
+    uint64_t success;
+    uint64_t failure;
+    uint64_t elapsed;
+    uint64_t bytes_sent;
+    uint64_t bytes_recv;
+
+    uint64_t econnect;
+    uint64_t erecv;
+    uint64_t erecv_timeo;
+    uint64_t esend;
+    uint64_t esend_timeo;
+    uint64_t einternal;
+
+    size_t len;
+    uint64_t latency;
+} tempest_stats_data_t;
+
+
+typedef struct {
+    pid_t pid;
+    size_t nbyte;
+    tempest_stats_data_t *data;
+} tempest_stats_t;
+
+
+static inline void tempest_stats_record( tempest_stats_t *s, uint64_t nsec )
+{
+    size_t idx = nsec / 1000 / 10;
+
+    if( idx < s->data->len ){
+        __atomic_fetch_add( &(&s->data->latency)[idx], 1, __ATOMIC_RELAXED );
+    }
+}
+
+
+LUALIB_API int luaopen_tempest_stats( lua_State *L );
+
+
 #define TEMPEST_ARRAY_MT    "tempest.array"
 
 typedef struct {

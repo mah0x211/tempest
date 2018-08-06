@@ -25,50 +25,8 @@
  *  Created by Masatoshi Fukunaga on 18/07/27.
  */
 
-
-#include <assert.h>
-#include <errno.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <stdint.h>
-#include <time.h>
+#include "tempest.h"
 #include <sys/mman.h>
-#include "lauxhlib.h"
-
-
-
-typedef struct {
-    uint64_t success;
-    uint64_t failure;
-    uint64_t elapsed;
-    uint64_t bytes_sent;
-    uint64_t bytes_recv;
-
-    uint64_t econnect;
-    uint64_t erecv;
-    uint64_t erecv_timeo;
-    uint64_t esend;
-    uint64_t esend_timeo;
-    uint64_t einternal;
-
-    size_t len;
-    uint64_t latency;
-} tempest_stats_data_t;
-
-
-typedef struct {
-    pid_t pid;
-    uint64_t start;
-    uint64_t stop;
-    size_t nbyte;
-    tempest_stats_data_t *data;
-} tempest_stats_t;
-
-
-#define TEMPEST_STATS_MT    "tempest.stats"
-
-
 
 
 #define tempest_stats_add(field) do{ \
