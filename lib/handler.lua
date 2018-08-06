@@ -12,7 +12,7 @@
 -- @param conn
 -- @param script
 local function handleConnection( conn, script )
-    local stat = conn.stat
+    local stats = conn.stats
     local proxy = {
         --- measure
         measure = function()
@@ -51,9 +51,9 @@ local function handleConnection( conn, script )
     while conn:connect() do
         repeat
             if script( proxy ) == true then
-                stat.success = stat.success + 1
+                stats:incrSuccess()
             else
-                stat.failure = stat.failure + 1
+                stats:incrFailure()
             end
         until conn.sock == nil or conn.aborted
     end

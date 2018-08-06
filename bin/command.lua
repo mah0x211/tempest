@@ -40,7 +40,7 @@ end
 
 
 local ok, err = require('act').run(function()
-    local t = Tempest.new( opts.worker )
+    local t = Tempest.new( opts.worker, opts.rcvtimeo )
     local stats, err, timeout = t:execute( opts, 1000 )
 
     if err then

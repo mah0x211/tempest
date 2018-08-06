@@ -10,8 +10,8 @@
 --- file scope variables
 require('tempest.bootstrap')
 local killpg = require('signal').killpg
+local Stats = require('tempest.stats')
 local Worker = require('tempest.worker')
-local Array = require('tempest.array')
 local strformat = string.format
 --- constants
 local KILO = 1000
@@ -80,10 +80,10 @@ end
 --- printStats
 -- @param stats
 local function printStats( stats )
-    local sbyte, sunit = toReadable( stats.bytes_sent )
-    local rbyte, runit = toReadable( stats.bytes_recv )
-    local sbyte_sec, sunit_sec = toReadable( stats.bytes_sent / stats.elapsed )
-    local rbyte_sec, runit_sec = toReadable( stats.bytes_recv / stats.elapsed )
+    local sbyte, sunit = toReadable( stats.bytesSent )
+    local rbyte, runit = toReadable( stats.bytesRecv )
+    local sbyte_sec, sunit_sec = toReadable( stats.bytesSent / stats.elapsed )
+    local rbyte_sec, runit_sec = toReadable( stats.bytesRecv / stats.elapsed )
 
     printf([[
 
@@ -114,67 +114,12 @@ local function printStats( stats )
         stats.econnect,
         stats.erecv,
         stats.esend,
-        stats.erecvtimeo,
-        stats.esendtimeo,
+        stats.erecvTimeo,
+        stats.esendTimeo,
         stats.einternal
     )
 
-    if stats.latency then
-        local data, head, tail = stats.latency:data()
-        local latencies = {}
-        local idx = 0
-        local avg = 0
-        local nth = 0
-        local max = 0
-
-        -- collect
-        for i = head, tail do
-            local nreq = data[i]
-
-            if nreq then
-                local msec = i / 100
-                local msecf = math.floor( msec )
-                local unit = 1
-
-                avg = avg + i
-                nth = nth + 1
-                if latencies[idx] and latencies[idx].msec == msecf then
-                    unit = latencies[idx].unit
-                    nreq = latencies[idx].nreq + nreq
-                    latencies[idx].nreq = nreq
-                    latencies[idx].max = msec
-                else
-                    idx = idx + 1
-                    latencies[idx] = {
-                        nreq = nreq,
-                        msec = msecf,
-                        min = msec,
-                        max = msec,
-                    }
-                end
-
-                if nreq > max then
-                    max = nreq
-                end
-
-                if nreq >= EXA then
-                    unit = EXA
-                elseif nreq >= PETA then
-                    unit = PETA
-                elseif nreq >= TERA then
-                    unit = TERA
-                elseif nreq >= GIGA then
-                    unit = GIGA
-                elseif nreq >= MEGA then
-                    unit = MEGA
-                elseif nreq >= KILO then
-                    unit = KILO
-                end
-                latencies[idx].unit = unit
-            end
-        end
-
-        printf([[
+    printf([[
 [Latency]
     minimum: %.2f ms
     maximum: %.2f ms
@@ -183,54 +128,55 @@ local function printStats( stats )
 [Histogram]
     latency   #reqs  %s  percentage    time-range
 ------------+-------+%s+-------------+-----------------]],
-            latencies[1].min, latencies[idx].max, avg / nth / 100,
-            GRAPH[0], HYPHENS
-        )
+        stats.latency_msec[1],
+        stats.latency_msec[#stats.latency_msec],
+        stats.latency_msec.avg,
+        GRAPH[0], HYPHENS
+    )
 
-        -- histogram
-        local padding = stats.success/ max
+    -- histogram
+    for i = 1, #stats.latency_msec_grp do
+        local mgrp = stats.latency_msec_grp[i]
+        local nreq = mgrp.nreq
+        local ratio = nreq / stats.success
+        local unit = 1
 
-        for i = 1, idx do
-            local latency = latencies[i]
-            local ratio = latency.nreq / stats.success
-
-            printf(
-                '%8d ms | %3d %s |%s| %9.5f %% | %.2f-%.2f ms',
-                latency.msec,
-                latency.nreq / latency.unit,
-                UNIT_SYMBOL[latency.unit] or ' ',
-                GRAPH[math.floor(ratio * padding * NGRAF)],
-                ratio * 100,
-                latency.min, latency.max
-            )
+        if nreq >= EXA then
+            unit = EXA
+        elseif nreq >= PETA then
+            unit = PETA
+        elseif nreq >= TERA then
+            unit = TERA
+        elseif nreq >= GIGA then
+            unit = GIGA
+        elseif nreq >= MEGA then
+            unit = MEGA
+        elseif nreq >= KILO then
+            unit = KILO
         end
-        print('')
+
+        printf(
+            '%8d ms | %3d %s |%s| %9.5f %% | %.2f-%.2f ms',
+            mgrp.msec,
+            nreq / unit,
+            UNIT_SYMBOL[unit] or ' ',
+            GRAPH[math.floor(ratio * 100 * WIDTH)],
+            ratio * 100,
+            mgrp.min, mgrp.max
+        )
     end
+    print('')
 end
 
 
 --- collectStats
+-- @param stats
 -- @param workers
 -- @param msec
 -- @return stats
-local function collectStats( workers, msec )
-    local stats = {
-        started = 0,
-        stopped = 0,
-        success = 0,
-        failure = 0,
-        bytes_sent = 0,
-        bytes_recv = 0,
-        nsend = 0,
-        nrecv = 0,
-        econnect = 0,
-        einternal = 0,
-        esend = 0,
-        erecv = 0,
-        esendtimeo = 0,
-        erecvtimeo = 0,
-    }
-
+local function collectStats( stats, workers, msec )
+    stats.started = 0
+    stats.stopped = 0
     for i = 1, #workers do
         local stat, err, timeout  = workers[i]:stat( msec )
 
@@ -239,30 +185,7 @@ local function collectStats( workers, msec )
             err = err,
             timeout = timeout
         }
-
         if stat then
-            if stat.latency then
-                local latency = Array.decode( stat.latency )
-
-                if stats.latency then
-                    stats.latency:merge( latency )
-                else
-                    stats.latency = latency
-                end
-            end
-
-            stats.success = stats.success + stat.success
-            stats.failure = stats.failure + stat.failure
-            stats.bytes_recv = stats.bytes_recv + stat.bytes_recv
-            stats.bytes_sent = stats.bytes_sent + stat.bytes_sent
-            stats.econnect = stats.econnect + stat.econnect
-            stats.einternal = stats.einternal + stat.einternal
-            stats.erecv = stats.erecv + stat.erecv
-            stats.erecvtimeo = stats.erecvtimeo + stat.erecvtimeo
-            stats.esend = stats.esend + stat.esend
-            stats.esendtimeo = stats.esendtimeo + stat.esendtimeo
-            stats.nrecv = stats.nrecv + stat.nrecv
-            stats.nsend = stats.nsend + stat.nsend
             if stats.started == 0 or stats.started > stat.started then
                 stats.started = stat.started
             end
@@ -292,14 +215,14 @@ local Tempest = {}
 
 
 --- execute
--- @param req
+-- @param opts
 -- @param msec
 -- @return stats
 -- @return err
 -- @return timeout
-function Tempest:execute( req, msec )
+function Tempest:execute( opts, msec )
     local workers = {}
-    local client = req.client
+    local client = opts.client
     local surplus = client % self.nworker
     local nclient = ( client - surplus ) / self.nworker
 
@@ -307,13 +230,13 @@ function Tempest:execute( req, msec )
         -- manipulate number of clients
         if surplus > 0 then
             surplus = surplus - 1
-            req.nclient = nclient + 1
+            opts.nclient = nclient + 1
         else
-            req.nclient = nclient
+            opts.nclient = nclient
         end
 
         -- create worker
-        local w, err, again = Worker.new( req )
+        local w, err, again = Worker.new( self.stats, opts )
 
         if not w then
             closeWorkers( workers )
@@ -335,7 +258,7 @@ function Tempest:execute( req, msec )
     end
 
     -- wait
-    local _, serr, timeout = sigwait( req.duration, SIGINT )
+    local _, serr, timeout = sigwait( opts.duration, SIGINT )
 
     if serr then
         closeWorkers( workers )
@@ -346,7 +269,7 @@ function Tempest:execute( req, msec )
     end
 
     -- collect stats
-    local stats = collectStats( workers, msec )
+    local stats = collectStats( self.stats:data(), workers, msec )
     closeWorkers( workers )
 
     return stats
@@ -355,10 +278,18 @@ end
 
 --- new
 -- @param nworker
+-- @param msec
 -- @return tempest
 -- @return err
-local function new( nworker )
+local function new( nworker, msec )
+    local stats, err = Stats.new( msec )
+
+    if err then
+        return nil, err
+    end
+
     return setmetatable({
+        stats = stats,
         nworker = nworker
     }, {
         __index = Tempest

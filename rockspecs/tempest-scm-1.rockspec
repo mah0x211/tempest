@@ -46,10 +46,6 @@ build = {
             incdirs = { "deps/lauxhlib" },
             sources = { "src/stats.c" }
         },
-        ['tempest.array'] = {
-            incdirs = { "deps/lauxhlib" },
-            sources = { "src/array.c" }
-        },
         ['tempest.timer'] = {
             incdirs = { "deps/lauxhlib" },
             sources = { "src/timer.c" }

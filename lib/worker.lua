@@ -14,22 +14,20 @@ local eval = require('tempest.script').eval
 local IPC = require('tempest.ipc')
 local Connection = require('tempest.connection')
 local Handler = require('tempest.handler')
-local Array = require('tempest.array')
 
 
 --- spawnHandler
--- @param nclient
--- @param script
--- @param stat
+-- @param stats
+-- @param opts
 -- @return cids
 -- @return err
-local function spawnHandler( nclient, script, stat )
+local function spawnHandler( stats, opts )
     local cids = {}
 
     -- create clients
-    for i = 1, nclient do
-        local conn = Connection.new( stat )
-        local cid, err = spawn( Handler, conn, script )
+    for i = 1, opts.nclient do
+        local conn = Connection.new( stats, opts )
+        local cid, err = spawn( Handler, conn, opts.script )
 
         if err then
             return nil, err
@@ -46,30 +44,12 @@ end
 
 --- handleRequest
 -- @param ipc
--- @param req
--- @param script
+-- @param stats
+-- @param opts
 -- @return err
-local function handleRequest( ipc, req, script )
-    local stat = {
-        host = req.host,
-        port = req.port,
-        rcvtimeo = req.rcvtimeo,
-        sndtimeo = req.sndtimeo,
-        latency = Array.new( req.rcvtimeo / 1000 ),
-        success = 0,
-        failure = 0,
-        bytes_sent = 0,
-        bytes_recv = 0,
-        nsend = 0,
-        nrecv = 0,
-        econnect = 0,
-        einternal = 0,
-        esend = 0,
-        erecv = 0,
-        esendtimeo = 0,
-        erecvtimeo = 0,
-    }
-    local cids, err = spawnHandler( req.nclient, script, stat )
+local function handleRequest( ipc, stats, opts )
+    local cids, err = spawnHandler( stats, opts )
+    local wstat = {}
 
     if err then
         return err
@@ -96,17 +76,16 @@ local function handleRequest( ipc, req, script )
         resume( cids[i].cid )
     end
 
-    stat.started = gettimeofday()
-    signo, err = sigwait( req.duration, SIGQUIT )
-    stat.stopped = gettimeofday()
+    wstat.started = gettimeofday()
+    signo, err = sigwait( opts.duration, SIGQUIT )
+    wstat.stopped = gettimeofday()
+    wstat.elapsed = wstat.stopped - wstat.started
 
     -- abort all connections
     for i = 1, #cids do
         cids[i].conn:abort()
     end
 
-    stat.elapsed = stat.stopped - stat.started
-    stat.latency = stat.latency:encode()
     if err then
         return err
     -- aborted by SIGQUIT
@@ -116,7 +95,7 @@ local function handleRequest( ipc, req, script )
 
     -- send stat to parent
     local timeout
-    ok, err, timeout = ipc:writeStat( stat, 1000 )
+    ok, err, timeout = ipc:writeStat( wstat, 1000 )
     if err then
         err = 'failed to send a stat to parent: ' .. err
     elseif timeout then
@@ -131,18 +110,14 @@ end
 
 --- handleWorker
 -- @param ipc
--- @param req
-local function handleWorker( ipc, req )
-    local script, err
+-- @param stats
+-- @param opts
+local function handleWorker( ipc, stats, opts )
+    local err
 
-    if req.chunk then
-        script, err = eval( req.chunk )
-    else
-        script = req.defaultHandler
-    end
-
+    opts.script, err = eval( opts.chunk )
     if not err then
-        err = handleRequest( ipc, req, script )
+        err = handleRequest( ipc, stats, opts )
     end
 
     if err then
@@ -207,11 +182,12 @@ end
 
 
 --- new
--- @param req
+-- @param stats
+-- @param opts
 -- @return worker
 -- @return err
 -- @return again
-local function new( req )
+local function new( stats, opts )
     local ipc1, ipc2, err = IPC.new()
     local ok, pid, again, timeout
 
@@ -228,7 +204,7 @@ local function new( req )
     -- run in child process
     elseif pid == 0 then
         ipc1:close()
-        err = handleWorker( ipc2, req )
+        err = handleWorker( ipc2, stats, opts )
         ipc2:close()
         if err then
             log.err( 'failed to handleWorker():', err )

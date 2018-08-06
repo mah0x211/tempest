@@ -21,18 +21,19 @@ local Connection = {}
 -- @return ok
 function Connection:connect()
     if not self.aborted then
-        local stat = self.stat
+        local stats = self.stats
         local opts = self.opts
+        local addr = self.addr
 
         while not self.aborted do
-            local sock = NewInetClient( opts )
+            local sock = NewInetClient( addr )
 
             if not sock then
-                stat.econnect = stat.econnect + 1
+                stats:incrEconnect()
                 sleep( 500 )
             else
                 -- set deadlines
-                sock:deadlines( stat.rcvtimeo, stat.sndtimeo )
+                sock:deadlines( opts.rcvtimeo, opts.sndtimeo )
                 self.sock = sock
                 return true
             end
@@ -54,17 +55,16 @@ function Connection:send( str )
 
         if not len or len ~= #str then
             if timeout then
-                self.stat.esendtimeo = self.stat.esendtimeo + 1
+                self.stats:incrESendtimeo()
             else
-                self.stat.esend = self.stat.esend + 1
+                self.stats:incrESend()
             end
             self.sock:close()
             self.sock = nil
             self.timer:reset()
         else
             -- update total-sent bytes and number of sent
-            self.stat.bytes_sent = self.stat.bytes_sent + len
-            self.stat.nsend = self.stat.nsend + 1
+            self.stats:addBytesSent( len )
         end
 
         return len, err, timeout
@@ -86,17 +86,16 @@ function Connection:writev( iov )
 
         if not len or len ~= iov:bytes() then
             if timeout then
-                self.stat.esendtimeo = self.stat.esendtimeo + 1
+                self.stats:incrESendTimeo()
             else
-                self.stat.esend = self.stat.esend + 1
+                self.stats:incrESend()
             end
             self.timer:reset()
             self.sock:close()
             self.sock = nil
         else
-            -- update total-sent bytes and number of sent
-            self.stat.bytes_sent = self.stat.bytes_sent + len
-            self.stat.nsend = self.stat.nsend + 1
+            -- update total-sent bytes
+            self.stats:addBytesSent( len )
         end
 
         return len, err, timeout
@@ -117,17 +116,16 @@ function Connection:recv()
         self.timer:measure()
         if not data then
             if timeout then
-                self.stat.erecvtimeo = self.stat.erecvtimeo + 1
+                self.stats:incrERecvTimeo()
             else
-                self.stat.erecv = self.stat.erecv + 1
+                self.stats:incrERecv()
             end
             self.timer:reset()
             self.sock:close()
             self.sock = nil
         else
-            -- update total-recv bytes and number of recvd
-            self.stat.bytes_recv = self.stat.bytes_recv + #data
-            self.stat.nrecv = self.stat.nrecv + 1
+            -- update total-recv bytes
+            self.stats:addBytesRecv( #data )
         end
 
         return data, err, timeout
@@ -159,15 +157,16 @@ function Connection:close()
 end
 
 
-local function new( stat )
+local function new( stats, opts )
     return setmetatable({
         aborted = false,
-        stat = stat,
-        opts = {
-            host = stat.host,
-            port = stat.port
+        stats = stats,
+        opts = opts,
+        addr = {
+            host = opts.host,
+            port = opts.port
         },
-        timer = Timer.new( stat.latency ),
+        timer = Timer.new( stats ),
     }, {
         __index = Connection
     })

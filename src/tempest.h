@@ -103,7 +103,7 @@ LUALIB_API int luaopen_tempest_array( lua_State *L );
 
 typedef struct {
     int ref;
-    tempest_array_t *arr;
+    tempest_stats_t *stats;
     uint64_t start;
     uint64_t stop;
     uint64_t ttfb;

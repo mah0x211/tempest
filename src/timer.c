@@ -66,7 +66,7 @@ static int stop_lua( lua_State *L )
     tempest_timer_t *t = lauxh_checkudata( L, 1, TEMPEST_TIMER_MT );
 
     if( t->start ){
-        tempest_array_incr( t->arr, nsec - t->start );
+        tempest_stats_record( t->stats, nsec - t->start );
         t->start = t->stop = t->ttfb = 0;
     }
 
@@ -95,7 +95,7 @@ static int start_lua( lua_State *L )
     tempest_timer_t *t = lauxh_checkudata( L, 1, TEMPEST_TIMER_MT );
 
     if( t->stop ){
-        tempest_array_incr( t->arr, t->stop - t->start );
+        tempest_stats_record( t->stats, t->stop - t->start );
     }
 
     t->stop = t->ttfb = 0;
@@ -134,13 +134,13 @@ static int gc_lua( lua_State *L )
 
 static int new_lua( lua_State *L )
 {
-    tempest_array_t *arr = lauxh_checkudata( L, 1, TEMPEST_ARRAY_MT );
+    tempest_stats_t *stats = lauxh_checkudata( L, 1, TEMPEST_STATS_MT );
     tempest_timer_t *t = lua_newuserdata( L, sizeof( tempest_timer_t ) );
 
     lua_pushvalue( L, 1 );
     *t = (tempest_timer_t){
         .ref = lauxh_ref( L ),
-        .arr = arr,
+        .stats = stats,
         .start = 0,
         .stop = 0,
         .ttfb = 0
@@ -194,7 +194,7 @@ LUALIB_API int luaopen_tempest_timer( lua_State *L )
         } while( ptr->name );
         lua_rawset( L, -3 );
     }
-    lua_pop( L, 1 );
+    lua_settop( L, 0 );
 
     // create module table
     lua_newtable( L );
