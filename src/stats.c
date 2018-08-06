@@ -192,7 +192,8 @@ static int gc_lua( lua_State *L )
 
 static int new_lua( lua_State *L )
 {
-    size_t len = (size_t)lauxh_checkuint32( L, 1 ) * 100;
+    uint32_t msec = lauxh_checkuint32( L, 1 );
+    size_t len = (size_t)msec * 100;
     tempest_stats_t *s = lua_newuserdata( L, sizeof( tempest_stats_t ) );
 
     memset( (void*)s, 0, sizeof( tempest_stats_t ) );
@@ -200,6 +201,7 @@ static int new_lua( lua_State *L )
     s->data = (tempest_stats_data_t*)mmap( NULL, s->nbyte, PROT_READ|PROT_WRITE,
                                           MAP_ANONYMOUS|MAP_SHARED, -1, 0 );
     if( s->data ){
+        memset( (void*)s->data, 0, s->nbyte );
         s->data->len = len;
         s->pid = getpid();
         lauxh_setmetatable( L, TEMPEST_STATS_MT );
@@ -258,7 +260,7 @@ LUALIB_API int luaopen_tempest_stats( lua_State *L )
         } while( ptr->name );
         lua_rawset( L, -3 );
     }
-    lua_pop( L, 1 );
+    lua_settop( L, 0 );
 
     // create module table
     lua_newtable( L );
