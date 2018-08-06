@@ -36,37 +36,6 @@
 #include <sys/mman.h>
 #include "lauxhlib.h"
 
-#if defined(__APPLE__)
-#include <mach/mach.h>
-#include <mach/mach_time.h>
-
-static inline uint64_t getnsec( void )
-{
-    static mach_timebase_info_data_t tbinfo = { 0 };
-
-    if( tbinfo.denom == 0 ){
-        (void)mach_timebase_info( &tbinfo );
-    }
-
-    return mach_absolute_time() * tbinfo.numer / tbinfo.denom;
-}
-
-#else
-
-static inline uint64_t getnsec( void )
-{
-    struct timespec ts = {0};
-
-#if defined(CLOCK_MONOTONIC_COARSE)
-    clock_gettime( CLOCK_MONOTONIC_COARSE, &ts );
-#else
-    clock_gettime( CLOCK_MONOTONIC, &ts );
-#endif
-
-    return (uint64_t)ts.tv_sec * 1000000000 + (uint64_t)ts.tv_nsec;
-}
-
-#endif
 
 
 typedef struct {
@@ -100,64 +69,6 @@ typedef struct {
 #define TEMPEST_STATS_MT    "tempest.stats"
 
 
-static inline void tempest_stats_latency_incr( tempest_stats_t *s, uint64_t nsec )
-{
-    size_t idx = nsec / 1000 / 10;
-
-    if( idx < s->data->len ){
-        __atomic_fetch_add( &(&s->data->latency)[idx], 1, __ATOMIC_RELAXED );
-    }
-}
-
-
-static int latency_stop_lua( lua_State *L )
-{
-    uint64_t nsec = getnsec();
-    tempest_stats_t *s = lauxh_checkudata( L, 1, TEMPEST_STATS_MT );
-
-    if( s->start ){
-        tempest_stats_latency_incr( s, nsec - s->start );
-        s->start = s->stop = 0;
-    }
-
-    return 0;
-}
-
-
-static int latency_measure_lua( lua_State *L )
-{
-    uint64_t nsec = getnsec();
-    tempest_stats_t *s = lauxh_checkudata( L, 1, TEMPEST_STATS_MT );
-
-    s->stop = nsec;
-
-    return 0;
-}
-
-
-static int latency_start_lua( lua_State *L )
-{
-    tempest_stats_t *s = lauxh_checkudata( L, 1, TEMPEST_STATS_MT );
-
-    if( s->stop ){
-        tempest_stats_latency_incr( s, s->stop - s->start );
-    }
-
-    s->stop = 0;
-    s->start = getnsec();
-
-    return 0;
-}
-
-
-static int latency_reset_lua( lua_State *L )
-{
-    tempest_stats_t *s = lauxh_checkudata( L, 1, TEMPEST_STATS_MT );
-
-    s->start = s->stop = 0;
-
-    return 0;
-}
 
 
 #define tempest_stats_add(field) do{ \
@@ -370,10 +281,6 @@ LUALIB_API int luaopen_tempest_stats( lua_State *L )
             { "incrESend", incr_esend_lua },
             { "incrESendTimeo", incr_esend_timeo_lua },
             { "incrEInternal", incr_einternal_lua },
-            { "latencyReset", latency_reset_lua },
-            { "latencyStart", latency_start_lua },
-            { "latencyMeasure", latency_measure_lua },
-            { "latencyStop", latency_stop_lua },
             { NULL, NULL }
         };
         struct luaL_Reg *ptr = mmethod;
