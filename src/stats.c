@@ -85,7 +85,7 @@ typedef struct {
 
     size_t len;
     uint64_t latency;
-} tempest_stat_data_t;
+} tempest_stats_data_t;
 
 
 typedef struct {
@@ -93,14 +93,14 @@ typedef struct {
     uint64_t start;
     uint64_t stop;
     size_t nbyte;
-    tempest_stat_data_t *data;
-} tempest_stat_t;
+    tempest_stats_data_t *data;
+} tempest_stats_t;
 
 
-#define MODULE_MT   "tempest.stat"
+#define TEMPEST_STATS_MT    "tempest.stats"
 
 
-static inline void tempest_stat_latency_incr( tempest_stat_t *s, uint64_t nsec )
+static inline void tempest_stats_latency_incr( tempest_stats_t *s, uint64_t nsec )
 {
     size_t idx = nsec / 1000 / 10;
 
@@ -113,10 +113,10 @@ static inline void tempest_stat_latency_incr( tempest_stat_t *s, uint64_t nsec )
 static int latency_stop_lua( lua_State *L )
 {
     uint64_t nsec = getnsec();
-    tempest_stat_t *s = lauxh_checkudata( L, 1, MODULE_MT );
+    tempest_stats_t *s = lauxh_checkudata( L, 1, TEMPEST_STATS_MT );
 
     if( s->start ){
-        tempest_stat_latency_incr( s, nsec - s->start );
+        tempest_stats_latency_incr( s, nsec - s->start );
         s->start = s->stop = 0;
     }
 
@@ -127,7 +127,7 @@ static int latency_stop_lua( lua_State *L )
 static int latency_measure_lua( lua_State *L )
 {
     uint64_t nsec = getnsec();
-    tempest_stat_t *s = lauxh_checkudata( L, 1, MODULE_MT );
+    tempest_stats_t *s = lauxh_checkudata( L, 1, TEMPEST_STATS_MT );
 
     s->stop = nsec;
 
@@ -137,10 +137,10 @@ static int latency_measure_lua( lua_State *L )
 
 static int latency_start_lua( lua_State *L )
 {
-    tempest_stat_t *s = lauxh_checkudata( L, 1, MODULE_MT );
+    tempest_stats_t *s = lauxh_checkudata( L, 1, TEMPEST_STATS_MT );
 
     if( s->stop ){
-        tempest_stat_latency_incr( s, s->stop - s->start );
+        tempest_stats_latency_incr( s, s->stop - s->start );
     }
 
     s->stop = 0;
@@ -152,7 +152,7 @@ static int latency_start_lua( lua_State *L )
 
 static int latency_reset_lua( lua_State *L )
 {
-    tempest_stat_t *s = lauxh_checkudata( L, 1, MODULE_MT );
+    tempest_stats_t *s = lauxh_checkudata( L, 1, TEMPEST_STATS_MT );
 
     s->start = s->stop = 0;
 
@@ -160,63 +160,63 @@ static int latency_reset_lua( lua_State *L )
 }
 
 
-#define tempest_stat_add(field) do{ \
-    tempest_stat_t *s = lauxh_checkudata( L, 1, MODULE_MT ); \
+#define tempest_stats_add(field) do{ \
+    tempest_stats_t *s = lauxh_checkudata( L, 1, TEMPEST_STATS_MT ); \
     uint64_t v = (uint64_t)lauxh_checkuint64( L, 2 ); \
     __atomic_fetch_add( &(s->data->field), v, __ATOMIC_RELAXED ); \
     return 0; \
 }while(0)
 
 
-#define tempest_stat_incr(field) do{ \
-    tempest_stat_t *s = lauxh_checkudata( L, 1, MODULE_MT ); \
+#define tempest_stats_incr(field) do{ \
+    tempest_stats_t *s = lauxh_checkudata( L, 1, TEMPEST_STATS_MT ); \
     __atomic_fetch_add( &(s->data->field), 1, __ATOMIC_RELAXED ); \
     return 0; \
 }while(0)
 
 
 static int incr_einternal_lua( lua_State *L ){
-    tempest_stat_incr( einternal );
+    tempest_stats_incr( einternal );
 }
 static int incr_esend_timeo_lua( lua_State *L ){
-    tempest_stat_incr( esend_timeo );
+    tempest_stats_incr( esend_timeo );
 }
 static int incr_esend_lua( lua_State *L ){
-    tempest_stat_incr( esend );
+    tempest_stats_incr( esend );
 }
 static int incr_erecv_timeo_lua( lua_State *L ){
-    tempest_stat_incr( erecv_timeo );
+    tempest_stats_incr( erecv_timeo );
 }
 static int incr_erecv_lua( lua_State *L ){
-    tempest_stat_incr( erecv );
+    tempest_stats_incr( erecv );
 }
 static int incr_econnect_lua( lua_State *L ){
-    tempest_stat_incr( econnect );
+    tempest_stats_incr( econnect );
 }
 static int add_bytes_recv_lua( lua_State *L ){
-    tempest_stat_add( bytes_recv );
+    tempest_stats_add( bytes_recv );
 }
 static int add_bytes_sent_lua( lua_State *L ){
-    tempest_stat_add( bytes_sent );
+    tempest_stats_add( bytes_sent );
 }
 static int incr_failure_lua( lua_State *L ){
-    tempest_stat_incr( failure );
+    tempest_stats_incr( failure );
 }
 static int incr_success_lua( lua_State *L ){
-    tempest_stat_incr( success );
+    tempest_stats_incr( success );
 }
 
 
 static int data_lua( lua_State *L )
 {
-    tempest_stat_t *s = lauxh_checkudata( L, 1, MODULE_MT );
+    tempest_stats_t *s = lauxh_checkudata( L, 1, TEMPEST_STATS_MT );
 
     if( s->pid != getpid() || !s->data ){
         lua_pushnil( L );
     }
     else
     {
-        tempest_stat_data_t *data = s->data;
+        tempest_stats_data_t *data = s->data;
         uint64_t *latency = &data->latency;
         uint64_t min_nreq = UINT64_MAX;
         uint64_t max_nreq = 0;
@@ -269,7 +269,7 @@ static int data_lua( lua_State *L )
 
 static int reset_lua( lua_State *L )
 {
-    tempest_stat_t *s = lauxh_checkudata( L, 1, MODULE_MT );
+    tempest_stats_t *s = lauxh_checkudata( L, 1, TEMPEST_STATS_MT );
 
     if( s->data ){
         memset( (void*)s->data, 0, s->nbyte );
@@ -281,7 +281,7 @@ static int reset_lua( lua_State *L )
 
 static int dispose_lua( lua_State *L )
 {
-    tempest_stat_t *s = lauxh_checkudata( L, 1, MODULE_MT );
+    tempest_stats_t *s = lauxh_checkudata( L, 1, TEMPEST_STATS_MT );
 
     if( s->data && s->pid == getpid() ){
         munmap( (void*)s->data, s->nbyte );
@@ -294,7 +294,7 @@ static int dispose_lua( lua_State *L )
 
 static int len_lua( lua_State *L )
 {
-    tempest_stat_t *s = (tempest_stat_t*)lua_touserdata( L, 1 );
+    tempest_stats_t *s = (tempest_stats_t*)lua_touserdata( L, 1 );
 
     lua_pushnumber( L, s->nbyte );
 
@@ -304,14 +304,14 @@ static int len_lua( lua_State *L )
 
 static int tostring_lua( lua_State *L )
 {
-    lua_pushfstring( L, MODULE_MT ": %p", lua_touserdata( L, 1 ) );
+    lua_pushfstring( L, TEMPEST_STATS_MT ": %p", lua_touserdata( L, 1 ) );
     return 1;
 }
 
 
 static int gc_lua( lua_State *L )
 {
-    tempest_stat_t *s = (tempest_stat_t*)lua_touserdata( L, 1 );
+    tempest_stats_t *s = (tempest_stats_t*)lua_touserdata( L, 1 );
 
     if( s->data && s->pid == getpid() ){
         munmap( (void*)s->data, s->nbyte );
@@ -324,16 +324,16 @@ static int gc_lua( lua_State *L )
 static int new_lua( lua_State *L )
 {
     size_t len = (size_t)lauxh_checkuint32( L, 1 ) * 100;
-    tempest_stat_t *s = lua_newuserdata( L, sizeof( tempest_stat_t ) );
+    tempest_stats_t *s = lua_newuserdata( L, sizeof( tempest_stats_t ) );
 
-    memset( (void*)s, 0, sizeof( tempest_stat_t ) );
-    s->nbyte = sizeof( uint64_t ) * len + sizeof( tempest_stat_data_t );
-    s->data = (tempest_stat_data_t*)mmap( NULL, s->nbyte, PROT_READ|PROT_WRITE,
+    memset( (void*)s, 0, sizeof( tempest_stats_t ) );
+    s->nbyte = sizeof( uint64_t ) * len + sizeof( tempest_stats_data_t );
+    s->data = (tempest_stats_data_t*)mmap( NULL, s->nbyte, PROT_READ|PROT_WRITE,
                                           MAP_ANONYMOUS|MAP_SHARED, -1, 0 );
     if( s->data ){
         s->data->len = len;
         s->pid = getpid();
-        lauxh_setmetatable( L, MODULE_MT );
+        lauxh_setmetatable( L, TEMPEST_STATS_MT );
         return 1;
     }
 
@@ -347,7 +347,7 @@ static int new_lua( lua_State *L )
 LUALIB_API int luaopen_tempest_stats( lua_State *L )
 {
     // create metatable
-    if( luaL_newmetatable( L, MODULE_MT ) )
+    if( luaL_newmetatable( L, TEMPEST_STATS_MT ) )
     {
         struct luaL_Reg mmethod[] = {
             { "__gc", gc_lua },
