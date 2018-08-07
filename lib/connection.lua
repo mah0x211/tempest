@@ -29,7 +29,7 @@ function Connection:connect()
             local sock = NewInetClient( addr )
 
             if not sock then
-                stats:incrEconnect()
+                stats:incrEConnect()
                 sleep( 500 )
             else
                 -- set deadlines
