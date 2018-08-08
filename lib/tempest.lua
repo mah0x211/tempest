@@ -20,14 +20,6 @@ local GIGA = MEGA * 1000
 local TERA = GIGA * 1000
 local PETA = TERA * 1000
 local EXA = PETA * 1000
-local UNIT_SYMBOL = {
-    [KILO] = 'k',
-    [MEGA] = 'M',
-    [GIGA] = 'G',
-    [TERA] = 'T',
-    [PETA] = 'P',
-    [EXA] = 'E',
-}
 local WIDTH = 0.5
 local NGRAF = 100 * WIDTH
 local HYPHENS = ''
@@ -56,6 +48,25 @@ end
 
 local function printf( fmt, ... )
     print( strformat( fmt, ... ) )
+end
+
+
+local function toSISize( n )
+    if n >= EXA then
+        return n / EXA, 'E'
+    elseif n >= PETA then
+        return n / PETA, 'P'
+    elseif n >= TERA then
+        return n / TERA, 'T'
+    elseif n >= GIGA then
+        return n / GIGA, 'G'
+    elseif n >= MEGA then
+        return n / MEGA, 'M'
+    elseif n >= KILO then
+        return n / KILO, 'k'
+    end
+
+    return n, ' '
 end
 
 
@@ -119,7 +130,8 @@ local function printStats( stats )
         stats.einternal
     )
 
-    printf([[
+    if #stats.latency_msec_grp > 0 then
+        printf([[
 [Latency]
     minimum: %.2f ms
     maximum: %.2f ms
@@ -128,42 +140,27 @@ local function printStats( stats )
 [Histogram]
     latency   #reqs  %s  percentage    time-range
 ------------+-------+%s+-------------+-----------------]],
-        stats.latency_msec[1],
-        stats.latency_msec[#stats.latency_msec],
-        stats.latency_msec.avg,
-        GRAPH[0], HYPHENS
-    )
-
-    -- histogram
-    for i = 1, #stats.latency_msec_grp do
-        local mgrp = stats.latency_msec_grp[i]
-        local nreq = mgrp.nreq
-        local ratio = nreq / stats.success
-        local unit = 1
-
-        if nreq >= EXA then
-            unit = EXA
-        elseif nreq >= PETA then
-            unit = PETA
-        elseif nreq >= TERA then
-            unit = TERA
-        elseif nreq >= GIGA then
-            unit = GIGA
-        elseif nreq >= MEGA then
-            unit = MEGA
-        elseif nreq >= KILO then
-            unit = KILO
-        end
-
-        printf(
-            '%8d ms | %3d %s |%s| %9.5f %% | %.2f-%.2f ms',
-            mgrp.msec,
-            nreq / unit,
-            UNIT_SYMBOL[unit] or ' ',
-            GRAPH[math.floor(ratio * 100 * WIDTH)],
-            ratio * 100,
-            mgrp.min, mgrp.max
+            stats.latency_msec[1],
+            stats.latency_msec[#stats.latency_msec],
+            stats.latency_msec.avg,
+            GRAPH[0], HYPHENS
         )
+
+        -- histogram
+        for i = 1, #stats.latency_msec_grp do
+            local mgrp = stats.latency_msec_grp[i]
+            local ratio = mgrp.nreq / stats.success
+            local n, sunit = toSISize( mgrp.nreq )
+
+            printf(
+                '%8d ms | %3d %s |%s| %9.5f %% | %.2f-%.2f ms',
+                mgrp.msec,
+                n, sunit,
+                GRAPH[math.floor(ratio * 100 * WIDTH)],
+                ratio * 100,
+                mgrp.min, mgrp.max
+            )
+        end
     end
     print('')
 end
