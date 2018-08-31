@@ -100,7 +100,24 @@ local function compileFile( pathname )
 end
 
 
+--- compileString
+-- @param src
+-- @param ident
+-- @return chunk
+-- @return err
+local function compileString( src, ident )
+    local fn, err = loadchunk.string( src, nil, ident )
+
+    if err then
+        return nil, err
+    end
+
+    return compileFunc( fn )
+end
+
+
 return {
+    compileString = compileString,
     compileFile = compileFile,
     compileFunc = compileFunc,
     eval = eval,
