@@ -11,7 +11,7 @@
 local isa = require('isa')
 local logger = require('tempest.logger')
 local EchoHandler = require('tempest.handler.echo')
-local compileFunc = require('tempest.script').compileFunc
+local compileString = require('tempest.script').compileString
 local compileFile = require('tempest.script').compileFile
 local strsplit = require('string.split')
 local error = error
@@ -376,7 +376,7 @@ local function getopts( ... )
     -- specify default handler
     else
         opts.script = '<USE BUILT-IN HANDLER>'
-        opts.chunk, err = compileFunc( EchoHandler )
+        opts.chunk, err = compileString( EchoHandler, 'BUILT-IN HANDLER' )
     end
 
     if err then

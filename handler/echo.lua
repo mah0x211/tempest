@@ -8,6 +8,8 @@
 
 --]]
 
+return [[
+
 --- handler
 -- @param conn
 -- @return ok
@@ -28,3 +30,5 @@ local function handler( conn )
 end
 
 return handler
+
+]]
