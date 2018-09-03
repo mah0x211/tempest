@@ -10,16 +10,11 @@
 --- file scope variables
 require('tempest.bootstrap')
 local killpg = require('signal').killpg
+local tosiunit = require('tempest.util').tosiunit
 local Stats = require('tempest.stats')
 local Worker = require('tempest.worker')
 local strformat = string.format
 --- constants
-local KILO = 1000
-local MEGA = KILO * 1000
-local GIGA = MEGA * 1000
-local TERA = GIGA * 1000
-local PETA = TERA * 1000
-local EXA = PETA * 1000
 local WIDTH = 0.5
 local NGRAF = 100 * WIDTH
 local HYPHENS = ''
@@ -51,40 +46,16 @@ local function printf( fmt, ... )
 end
 
 
-local function toSISize( n )
-    if n >= EXA then
-        return n / EXA, 'E'
-    elseif n >= PETA then
-        return n / PETA, 'P'
-    elseif n >= TERA then
-        return n / TERA, 'T'
-    elseif n >= GIGA then
-        return n / GIGA, 'G'
-    elseif n >= MEGA then
-        return n / MEGA, 'M'
-    elseif n >= KILO then
-        return n / KILO, 'k'
-    end
-
-    return n, ' '
-end
-
-
 --- toReadable
 local function toReadable( n )
-    assert( type( n ) == 'number', 'invalid argument' )
-    -- GB
-    if n > 1000000000 then
-        return n / 1000000000, 'GB'
-    -- MB
-    elseif n > 1000000 then
-        return n / 1000000, 'MB'
-    -- KB
-    elseif n > 1000 then
-        return n / 1000, 'KB'
+    local unit
+
+    n, unit = tosiunit( n )
+    if unit == ' ' then
+        return n, 'B'
     end
 
-    return n, 'B'
+    return n, unit .. 'B'
 end
 
 
@@ -150,7 +121,7 @@ local function printStats( stats )
         for i = 1, #stats.latency_msec_grp do
             local mgrp = stats.latency_msec_grp[i]
             local ratio = mgrp.nreq / stats.success
-            local n, sunit = toSISize( mgrp.nreq )
+            local n, sunit = tosiunit( mgrp.nreq )
 
             printf(
                 '%8d ms | %3d %s |%s| %9.5f %% | %.2f-%.2f ms',

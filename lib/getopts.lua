@@ -14,16 +14,17 @@ local EchoHandler = require('tempest.handler.echo')
 local compileString = require('tempest.script').compileString
 local compileFile = require('tempest.script').compileFile
 local strsplit = require('string.split')
+local touint = require('tempest.util').touint
+local tomsec = require('tempest.util').tomsec
+local toaddr = require('tempest.util').toaddr
 local error = error
 local pairs = pairs
 local print = print
 local select = select
 local strfind = string.find
 local strformat = string.format
-local strmatch = string.match
 local strsub = string.sub
 local toupper = string.upper
-local tonumber = tonumber
 local tostring = tostring
 local unpack = unpack or table.unpack
 
@@ -176,109 +177,6 @@ NOTE:
         error               : output error log
 ]])
     os.exit()
-end
-
-
---- touint
--- @param str
--- @param def
--- @param min
--- @param max
--- @return val
--- @return err
-local function touint( v, def, min, max )
-    if v then
-        v = tonumber( v, 10 )
-        if not v or not isa.uint(v) then
-            return nil, 'must be unsigned integer'
-        elseif min and v < min then
-            return nil, strformat( 'must be greater than or equal to %d', min )
-        elseif max and v > max then
-            return nil, strformat( 'must be less than or equal to %d', max )
-        end
-
-        return v
-    end
-
-    return def
-end
-
-
---- tomsec
--- @param str
--- @param def
--- @param min
--- @param max
--- @return val
--- @return err
-local function tomsec( v, def, min, max )
-    if v then
-        local num, unit = strmatch( v, '^(%d+)([^%d].*)$' )
-        local err
-        local mul = 1
-
-        if unit then
-            -- check time-unit
-            if unit == 's' then
-                mul = 1000
-            elseif unit == 'm' then
-                mul = 60 * 1000
-            elseif unit == 'h' then
-                mul = 60 * 60 * 1000
-            elseif unit == 'd' then
-                mul = 60 * 60 * 24 * 1000
-            else
-                return nil, 'time-unit must be uint[s / m / h / d]'
-            end
-        end
-
-        -- check numeric value
-        v, err = touint( num or v, 10 )
-        if err then
-            return nil, err
-        end
-
-        -- multiply
-        v, err = touint( v * mul, def, min, max )
-        if err then
-            return nil, err
-        end
-
-        return v
-    end
-
-    return def
-end
-
-
---- toaddr
--- @param str
--- @return port
--- @return host
--- @return err
-local function toaddr( v )
-    if v then
-        local head = strfind( v, ':', 1, true )
-        local host = '127.0.0.1'
-        local port, err
-
-        if not head then
-            return nil, nil, 'port-number must be defined'
-        end
-
-        -- check port-number
-        port, err = touint( strsub( v, head + 1 ), nil, 1, 65535 )
-        if err then
-            return nil, nil, 'port-number ' .. err
-        elseif head > 1 then
-            -- extract host
-            host = strsub( v, 1, head - 1 )
-        end
-
-        return port, host
-    end
-
-    return nil, nil, 'must be defined'
 end
 
 

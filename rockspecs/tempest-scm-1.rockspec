@@ -50,5 +50,6 @@ build = {
             incdirs = { "deps/lauxhlib" },
             sources = { "src/timer.c" }
         },
+        ['tempest.util'] = "lib/util.lua",
     }
 }
