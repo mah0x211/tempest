@@ -276,13 +276,11 @@ local function getopts( ... )
     -- check tls and insecure
     if opts.tls then
         opts.tlscfg = TLSConfig.new()
+        raws.tls = 'true'
         if opts.insecure then
             raws.tls = 'true (insecure)'
             opts.tlscfg:insecure_noverifycert()
             opts.tlscfg:insecure_noverifyname()
-        elseif opts.host then
-            raws.tls = 'true'
-            opts.servername = opts.host
         end
     else
         raws.tls = 'false'
