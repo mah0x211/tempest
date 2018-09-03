@@ -19,6 +19,7 @@ print(strformat([[
 tempest run with following options;
 -----------------------------------
     address: %q
+ enable TLS: %s
      worker: %s
      client: %s
    duration: %s
@@ -27,7 +28,8 @@ tempest run with following options;
      script: %q
    loglevel: %s
 -----------------------------------]],
-    opts[-1].addr, opts[-1].worker, opts[-1].client, opts[-1].duration,
+    opts[-1].addr, opts[-1].tls,
+    opts[-1].worker, opts[-1].client, opts[-1].duration,
     opts[-1].rcvtimeo, opts[-1].sndtimeo, opts[-1].script,
     opts[-1].loglevel
 ))

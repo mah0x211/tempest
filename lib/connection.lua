@@ -164,7 +164,9 @@ local function new( stats, opts )
         opts = opts,
         addr = {
             host = opts.host,
-            port = opts.port
+            port = opts.port,
+            tlscfg = opts.tlscfg,
+            servername = opts.servername,
         },
         timer = Timer.new( stats ),
     }, {

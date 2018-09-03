@@ -9,6 +9,7 @@
 --]]
 --- file-scope variables
 local isa = require('isa')
+local TLSConfig = require("libtls.config")
 local logger = require('tempest.logger')
 local EchoHandler = require('tempest.handler.echo')
 local compileString = require('tempest.script').compileString
@@ -153,6 +154,8 @@ Options:
     --sndtimeo=<time>       : send timeout  (default same as `-t` value)
     --loglevel=<level>      : set output log-level (default: `debug`)
     -s, --script=<pathname> : scenario script
+    --tls                   : enable TLS connection
+    --insecure              : skip certificate verification
     address                 : specify target address in the following format;
                               `[host]:port`
 
@@ -195,6 +198,8 @@ local function getopts( ... )
         'rcvtimeo',
         'sndtimeo',
         'loglevel',
+        'tls:true',
+        'insecure:true',
     }, ... )
     local raws = {}
 
@@ -266,6 +271,21 @@ local function getopts( ... )
     opts.port, opts.host, err = toaddr( opts[1] )
     if err then
         printUsage( 'invalid address: ' .. err )
+    end
+
+    -- check tls and insecure
+    if opts.tls then
+        opts.tlscfg = TLSConfig.new()
+        if opts.insecure then
+            raws.tls = 'true (insecure)'
+            opts.tlscfg:insecure_noverifycert()
+            opts.tlscfg:insecure_noverifyname()
+        elseif opts.host then
+            raws.tls = 'true'
+            opts.servername = opts.host
+        end
+    else
+        raws.tls = 'false'
     end
 
     -- check script
