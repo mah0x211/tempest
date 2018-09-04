@@ -28,15 +28,19 @@ function Connection:connect()
         while not self.aborted do
             local sock = NewInetClient( addr )
 
-            if not sock then
-                stats:incrEConnect()
-                sleep( 500 )
-            else
-                -- set deadlines
-                sock:deadlines( opts.rcvtimeo, opts.sndtimeo )
-                self.sock = sock
-                return true
+            if sock then
+                if sock:handshake() then
+                    -- set deadlines
+                    sock:deadlines( opts.rcvtimeo, opts.sndtimeo )
+                    self.sock = sock
+                    return true
+                end
+
+                sock:close()
             end
+
+            stats:incrEConnect()
+            sleep( 500 )
         end
     end
 
