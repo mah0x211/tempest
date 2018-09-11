@@ -11,7 +11,8 @@ require('signal').blockAll()
 local Tempest = require('tempest')
 local getopts = require('tempest.getopts')
 local strformat = string.format
-local opts = getopts(...)
+local unpack = unpack or table.unpack
+local opts = getopts(unpack(arg))
 
 
 -- print execution parameters
